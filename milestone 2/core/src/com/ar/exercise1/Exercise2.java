@@ -18,6 +18,7 @@ import com.badlogic.gdx.utils.Array;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.opencv.calib3d.Calib3d;
@@ -37,9 +38,9 @@ public class Exercise2 implements ApplicationListener {
 	private long time;
 
 	//Calibration variables
-	private MatOfPoint3f obj;
+	private MatOfPoint3f wc;
+	private List<Mat> worldPoints;
 	private List<Mat> imagePoints;
-	private List<Mat> objectPoints;
 	private int pointsLogged = 0;
 	private Mat intrinsic;
 	private Mat distCoeffs;
@@ -54,11 +55,18 @@ public class Exercise2 implements ApplicationListener {
         boardSize = new Size(7, 5);
         time = System.currentTimeMillis();
         
-        MatOfPoint3f obj = new MatOfPoint3f();
-    	List<Mat> imagePoints = new ArrayList<Mat>();
-    	List<Mat> objectPoints = new ArrayList<Mat>();
-    	Mat intrinsic = new Mat(3, 3, CvType.CV_32FC1);
-    	Mat distCoeffs = new Mat();
+        wc = new MatOfPoint3f();
+    	imagePoints = new ArrayList<Mat>();
+    	worldPoints = new ArrayList<Mat>();
+    	intrinsic = new Mat(3, 3, CvType.CV_32FC1);
+    	distCoeffs = new Mat();
+    	for (int i = 0; i < 35; i++) {
+    		wc.push_back(new MatOfPoint3f(new Point3(i / 5, i % 5, 0.0f)));
+    		
+    	}
+//    	for(Mat p : worldPoints) {
+//    		System.out.println(p.dump() + "\n");
+//    	}
         
         cam.read(frame);
 	}
@@ -82,7 +90,6 @@ public class Exercise2 implements ApplicationListener {
         	TermCriteria term = new TermCriteria(TermCriteria.EPS | TermCriteria.MAX_ITER, 30, 0.1);
             Imgproc.cornerSubPix(grayFrame, corners, new Size(15, 11), new Size(-1, -1), term);
             logPoints();
-            System.out.println(found);
         }
         
         if(!cam.isOpened()){
@@ -97,18 +104,21 @@ public class Exercise2 implements ApplicationListener {
 	}
 	
 	private void logPoints() {
-		if (time > (System.currentTimeMillis() + 3*1000)) {
-			if (pointsLogged < 10)
+		if (time + 3*1000 < System.currentTimeMillis()) {
+			if (pointsLogged < 3)
 			{
 				// save all the needed values
 				imagePoints.add(corners);
-				objectPoints.add(obj);
+				worldPoints.add(wc);
 				pointsLogged++;
+				time = System.currentTimeMillis();
 				System.out.println("Logged points!");
+				System.out.println(corners.dump());
+				System.out.println(wc.dump());
 			}
 			
 			// reach the correct number of images needed for the calibration
-			if (pointsLogged == 10)
+			if (pointsLogged == 3)
 			{
 				this.calibrateCamera();
 				System.out.println("Calibrated camera!");
@@ -119,6 +129,14 @@ public class Exercise2 implements ApplicationListener {
 	private void calibrateCamera() {
 		//Do magic
 		System.out.println("Do magic camera stuff!");
+		List<Mat> rvecs = new ArrayList<>();
+		List<Mat> tvecs = new ArrayList<>();
+		intrinsic.put(0, 0, 1);
+		intrinsic.put(1, 1, 1); //Tutorial did this...
+		Calib3d.calibrateCamera(worldPoints, imagePoints, grayFrame.size(), intrinsic, distCoeffs, rvecs, tvecs);
+		System.out.println("Did magic camera stuff!");
+		System.out.println("Intrinsic: " + intrinsic.dump());
+		System.out.println("distCoeffs: " + distCoeffs.dump());
 	}
 
 	@Override
