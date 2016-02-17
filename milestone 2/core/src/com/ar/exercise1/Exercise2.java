@@ -44,6 +44,8 @@ public class Exercise2 implements ApplicationListener {
 	private int pointsLogged = 0;
 	private Mat intrinsic;
 	private Mat distCoeffs;
+	private boolean calibrated;
+	private Mat undistortedFrame;
 	
 	@Override
 	public void create() {
@@ -54,6 +56,7 @@ public class Exercise2 implements ApplicationListener {
 		corners.alloc(7);
         boardSize = new Size(7, 5);
         time = System.currentTimeMillis();
+        calibrated = false;
         
         wc = new MatOfPoint3f();
     	imagePoints = new ArrayList<Mat>();
@@ -74,7 +77,6 @@ public class Exercise2 implements ApplicationListener {
 	@Override
 	public void resize(int width, int height) {
 		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -98,7 +100,16 @@ public class Exercise2 implements ApplicationListener {
         else { //If cam works and frame read, draw frame, with chessboard corners if they were found
         	if (frameRead){
         		Calib3d.drawChessboardCorners(frame, boardSize, corners, found);
-        		UtilAR.imDrawBackground(frame);
+        		
+        		
+        		if(calibrated) {
+        			undistortedFrame = new Mat();
+        			Imgproc.undistort(frame, undistortedFrame, intrinsic, distCoeffs);
+        			UtilAR.imDrawBackground(undistortedFrame);
+        		}
+        		else {
+        			UtilAR.imDrawBackground(frame);
+        		}
         	}
         }
 	}
@@ -112,13 +123,13 @@ public class Exercise2 implements ApplicationListener {
 				worldPoints.add(wc);
 				pointsLogged++;
 				time = System.currentTimeMillis();
-				System.out.println("Logged points!");
+				System.out.println("Logged point!" );
 				System.out.println(corners.dump());
 				System.out.println(wc.dump());
 			}
 			
 			// reach the correct number of images needed for the calibration
-			if (pointsLogged == 3)
+			if (pointsLogged == 3 && !calibrated)
 			{
 				this.calibrateCamera();
 				System.out.println("Calibrated camera!");
@@ -137,6 +148,7 @@ public class Exercise2 implements ApplicationListener {
 		System.out.println("Did magic camera stuff!");
 		System.out.println("Intrinsic: " + intrinsic.dump());
 		System.out.println("distCoeffs: " + distCoeffs.dump());
+		calibrated = true;
 	}
 
 	@Override
