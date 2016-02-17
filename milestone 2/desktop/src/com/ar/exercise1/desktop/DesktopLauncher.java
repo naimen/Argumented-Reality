@@ -8,8 +8,8 @@ public class DesktopLauncher {
 	public static void main (String[] arg) {
 		System.loadLibrary("opencv_java310");
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
-		config.height = 600;
-		config.width = 800;
+		config.height = 480;
+		config.width = 640;
 		new LwjglApplication(new Exercise2(), config);
 	}
 }

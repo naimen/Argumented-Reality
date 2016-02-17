@@ -10,12 +10,16 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Vector;
+import com.badlogic.gdx.utils.Array;
+
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class Exercise2 implements ApplicationListener {
@@ -32,20 +36,27 @@ public class Exercise2 implements ApplicationListener {
 
 
 	//Calibration variables
+	private boolean calibrated;
 	private MatOfPoint3f wc;
 	private List<Mat> worldPoints;
 	private List<Mat> imagePoints;
 	private int pointsLogged = 0;
 	private Mat intrinsic;
-	private Mat distCoeffs;
+	private MatOfDouble distCoeffs;
 	private Mat rvec;
 	private Mat tvec;
 
+	//Box stuffs
+	private Array<ModelInstance> instances;
+	private ModelBuilder builder;
 	private Model model;
 	private ModelInstance instance;
 	private ModelBatch batch;
 	private Environment env;
 
+	
+	//Nico's magic fuckaround variables
+	//private Vector<Point3> boardPoints3D;
 
 
 	@Override
@@ -64,13 +75,19 @@ public class Exercise2 implements ApplicationListener {
     	imagePoints = new ArrayList<Mat>();
     	worldPoints = new ArrayList<Mat>();
     	intrinsic = new Mat(3, 3, CvType.CV_32FC1);
-    	distCoeffs = new Mat();
+    	distCoeffs = new MatOfDouble();
+    	
     	for (int i = 0; i < 35; i++) {
     		float x =i/5;
 			float y = i%5;
 			wc.push_back(new MatOfPoint3f(new Point3(x, y, 0.0f)));
 
     	}
+    	
+    	//Box stuff
+    	builder = new ModelBuilder();
+    	instances = new Array<ModelInstance>();
+    	
 //    	for(Mat p : worldPoints) {
 //    		System.out.println(p.dump() + "\n");
 //    	}
@@ -80,13 +97,17 @@ public class Exercise2 implements ApplicationListener {
 		camHeight=(float) cam.get(4);
 
 		pcam = new PerspectiveOffCenterCamera();
-		UtilAR.setNeutralCamera(pcam);
+		//UtilAR.setNeutralCamera(pcam);
+		//pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
 		pcam.update();
 		batch = new ModelBatch();
 		drawBox();
 		env = new Environment();
 		env.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
 		env.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
+		
+		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
 
 	}
@@ -99,11 +120,9 @@ public class Exercise2 implements ApplicationListener {
 	@Override
 	public void render() {
 		boolean frameRead = cam.read(frame);
-		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		Imgproc.cvtColor(frame, grayFrame, Imgproc.COLOR_BGR2GRAY);
 		
-		//Stores the corner locations in a the 'corners' parameter, based on the frame image
+		//Stores the corner locations in the 'corners' parameter, based on the frame image
         boolean found = Calib3d.findChessboardCorners(frame, boardSize, corners,
 				Calib3d.CALIB_CB_ADAPTIVE_THRESH + Calib3d.CALIB_CB_NORMALIZE_IMAGE + Calib3d.CALIB_CB_FAST_CHECK);
         
@@ -111,13 +130,15 @@ public class Exercise2 implements ApplicationListener {
         if(found) {
         	TermCriteria term = new TermCriteria(TermCriteria.EPS | TermCriteria.MAX_ITER, 30, 0.1);
             Imgproc.cornerSubPix(grayFrame, corners, new Size(15, 11), new Size(-1, -1), term);
-            logPoints();
-			Calib3d.solvePnP(wc,corners,UtilAR.getDefaultIntrinsics(camWidth,camHeight),UtilAR.getDefaultDistortionCoefficients(),rvec,tvec);
+            
+            //logPoints();
+            
+            Calib3d.solvePnP(wc, corners, UtilAR.getDefaultIntrinsics(camWidth,camHeight), UtilAR.getDefaultDistortionCoefficients(),rvec,tvec);
+			
 			UtilAR.setCameraByRT(rvec,tvec,pcam);
-
-			Matrix4 transform= new Matrix4();
-			UtilAR.setTransformByRT(tvec,rvec,transform);
-			instance.transform=transform;
+			//Matrix4 transform= new Matrix4();
+			//UtilAR.setTransformByRT(tvec,rvec,transform);
+			//instance.transform=transform;
 
 
 		}
@@ -129,15 +150,85 @@ public class Exercise2 implements ApplicationListener {
         	if (frameRead){
         		Calib3d.drawChessboardCorners(frame, boardSize, corners, found);
 				UtilAR.imDrawBackground(frame);
-
         	}
         }
+        
 		batch.begin(pcam);
-		batch.render(instance,env);
+		batch.render(instances,env);
 		batch.end();
 
 	}
+
+	private void drawBox(){
+		double size =Math.abs(corners.get(0,0)[0]-corners.get(1,0)[0]);
+
+		/*model=builder.createBox((float) size,(float)size,(float)size,
+				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
+				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+		instance = new ModelInstance(model,(float) wc.get(0,0)[0],(float) wc.get(0,0)[1],(float) wc.get(0,0)[2]);*/
+
+		model = builder.createBox(1,1,1,
+				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
+				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+		
+		
+		for(int y=0; y <6; y++) {
+			for(int x=0; x<4; x++) {
+				ModelInstance inst = new ModelInstance(model);
+				
+				if((x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)){
+					inst.transform.translate(0.5f + x, 0.5f, 0.5f + y);	
+					instances.add(inst);
+				}
+				
+			}
+		}
+//		
+//		ModelInstance inst = new ModelInstance(model);
+//		inst.transform.translate(0.5f, 0.5f, 0.5f);
+//		instances.add(inst);
+//		
+//		ModelInstance inst2 = new ModelInstance(model);
+//		inst2.transform.translate(2.5f, 0.5f, 0.5f);
+//		instances.add(inst2);
+//		
+//		ModelInstance inst3 = new ModelInstance(model);
+//		inst3.transform.translate(0.5f, 0.5f, 2.5f);
+//		instances.add(inst3);
+//		
+//		ModelInstance inst4 = new ModelInstance(model);
+//		inst4.transform.translate(2.5f, 0.5f, 2.5f);
+//		instances.add(inst4);
+//		
+//		ModelInstance inst5 = new ModelInstance(model);
+//		inst5.transform.translate(1.5f, 0.5f, 1.5f);
+//		instances.add(inst5);
+		
+
+		
+		
+	}
+	@Override
+	public void pause() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void resume() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void dispose() {
+		cam.release();
+		batch.dispose();
+		model.dispose();
+	}
 	
+	
+	//CALIBRATION MAGIC, IT'S SHIT, DON'T USE UNLESS FIXED
 	private void logPoints() {
 		if (time + 3*1000 < System.currentTimeMillis()) {
 			if (pointsLogged < 3)
@@ -173,39 +264,6 @@ public class Exercise2 implements ApplicationListener {
 		//System.out.println("Intrinsic: " + intrinsic.dump());
 		//System.out.println("distCoeffs: " + distCoeffs.dump());
 		calibrated = true;
-	}
-
-	private void drawBox(){
-		ModelBuilder builder=new ModelBuilder();
-		double size =Math.abs(corners.get(0,0)[0]-corners.get(1,0)[0]);
-
-		/*model=builder.createBox((float) size,(float)size,(float)size,
-				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
-				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-		instance = new ModelInstance(model,(float) wc.get(0,0)[0],(float) wc.get(0,0)[1],(float) wc.get(0,0)[2]);*/
-
-		model=builder.createBox(1,1,1,
-				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
-				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-		instance = new ModelInstance(model);
-	}
-	@Override
-	public void pause() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void resume() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void dispose() {
-		cam.release();
-		batch.dispose();
-		model.dispose();
 	}
 
 }
