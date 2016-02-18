@@ -1,5 +1,6 @@
 package com.ar.exercise1;
 
+import com.ar.util.UtilAR;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -7,8 +8,6 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 import org.opencv.core.*;
-
-import com.ar.exercise1.UtilAR;
 
 public class ARExercise extends ApplicationAdapter {
 	SpriteBatch batch;

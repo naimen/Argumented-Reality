@@ -1,5 +1,6 @@
 package com.ar.exercise1;
 
+import com.ar.util.UtilAR;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -18,8 +19,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.utils.Array;
 
 import org.opencv.core.*;
-
-import com.ar.exercise1.UtilAR;
 
 public class Basic3DTest implements ApplicationListener {
 	public PerspectiveCamera cam;

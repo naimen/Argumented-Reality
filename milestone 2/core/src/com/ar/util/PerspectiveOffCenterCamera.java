@@ -1,9 +1,10 @@
-package com.ar.exercise3;
+package com.ar.util;
+
+import org.opencv.core.Mat;
 
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
-import org.opencv.core.Mat;
 
 /**
  * Camera using perspective projection including off center projection.
