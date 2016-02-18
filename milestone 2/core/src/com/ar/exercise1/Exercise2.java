@@ -41,7 +41,7 @@ public class Exercise2 implements ApplicationListener {
 	private List<Mat> worldPoints;
 	private List<Mat> imagePoints;
 	private int pointsLogged = 0;
-	private Mat intrinsic;
+	private Mat calibIntrinsic;
 	private MatOfDouble distCoeffs;
 	private Mat rvec;
 	private Mat tvec;
@@ -50,14 +50,9 @@ public class Exercise2 implements ApplicationListener {
 	private Array<ModelInstance> instances;
 	private ModelBuilder builder;
 	private Model model;
-	private ModelInstance instance;
 	private ModelBatch batch;
 	private Environment env;
-
-	
-	//Nico's magic fuckaround variables
-	//private Vector<Point3> boardPoints3D;
-
+	private float boxSize;
 
 	@Override
 	public void create() {
@@ -65,7 +60,6 @@ public class Exercise2 implements ApplicationListener {
 		frame = new Mat();
 		grayFrame = new Mat();
 		corners = new MatOfPoint2f();
-		corners.alloc(7);
         boardSize = new Size(7, 5);
         time = System.currentTimeMillis();
 		rvec = new Mat();
@@ -74,42 +68,35 @@ public class Exercise2 implements ApplicationListener {
         wc = new MatOfPoint3f();
     	imagePoints = new ArrayList<Mat>();
     	worldPoints = new ArrayList<Mat>();
-    	intrinsic = new Mat(3, 3, CvType.CV_32FC1);
     	distCoeffs = new MatOfDouble();
+    	boxSize = 3.5f;
     	
-    	for (int i = 0; i < 35; i++) {
-    		float x =i/5;
-			float y = i%5;
-			wc.push_back(new MatOfPoint3f(new Point3(x, y, 0.0f)));
+    	for (int i = 0; i < boardSize.width*boardSize.height; i++) {
+    		float x = i%(int)boardSize.width;
+			float y = i/(int)boardSize.width;
+			wc.push_back(new MatOfPoint3f(new Point3(boxSize*x, boxSize*y, 0.0f)));
 
     	}
     	
     	//Box stuff
     	builder = new ModelBuilder();
     	instances = new Array<ModelInstance>();
-    	
-//    	for(Mat p : worldPoints) {
-//    		System.out.println(p.dump() + "\n");
-//    	}
         
         cam.read(frame);
 		camWidth=(float) cam.get(3);
 		camHeight=(float) cam.get(4);
 
 		pcam = new PerspectiveOffCenterCamera();
-		//UtilAR.setNeutralCamera(pcam);
-		//pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
 		pcam.update();
+		
 		batch = new ModelBatch();
-		drawBox();
+		drawBoxes();
 		env = new Environment();
 		env.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
 		env.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 		
 		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
-
-
 	}
 
 	@Override
@@ -120,27 +107,22 @@ public class Exercise2 implements ApplicationListener {
 	@Override
 	public void render() {
 		boolean frameRead = cam.read(frame);
-		Imgproc.cvtColor(frame, grayFrame, Imgproc.COLOR_BGR2GRAY);
+//		Imgproc.cvtColor(frame, grayFrame, Imgproc.COLOR_BGR2GRAY);
 		
 		//Stores the corner locations in the 'corners' parameter, based on the frame image
         boolean found = Calib3d.findChessboardCorners(frame, boardSize, corners,
 				Calib3d.CALIB_CB_ADAPTIVE_THRESH + Calib3d.CALIB_CB_NORMALIZE_IMAGE + Calib3d.CALIB_CB_FAST_CHECK);
         
-        //Does magic to make corners more accurate, based on greyscale image
+        //Refines corners, based on greyscale image
         if(found) {
-        	TermCriteria term = new TermCriteria(TermCriteria.EPS | TermCriteria.MAX_ITER, 30, 0.1);
-            Imgproc.cornerSubPix(grayFrame, corners, new Size(15, 11), new Size(-1, -1), term);
-            
+//        	TermCriteria term = new TermCriteria(TermCriteria.EPS | TermCriteria.MAX_ITER, 30, 0.1);
+//          Imgproc.cornerSubPix(grayFrame, corners, new Size(15, 11), new Size(-1, -1), term);
             //logPoints();
+        	
+            pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth,camHeight), camWidth, camHeight);
             
             Calib3d.solvePnP(wc, corners, UtilAR.getDefaultIntrinsics(camWidth,camHeight), UtilAR.getDefaultDistortionCoefficients(),rvec,tvec);
-			
 			UtilAR.setCameraByRT(rvec,tvec,pcam);
-			//Matrix4 transform= new Matrix4();
-			//UtilAR.setTransformByRT(tvec,rvec,transform);
-			//instance.transform=transform;
-
-
 		}
         
         if(!cam.isOpened()){
@@ -156,57 +138,25 @@ public class Exercise2 implements ApplicationListener {
 		batch.begin(pcam);
 		batch.render(instances,env);
 		batch.end();
-
 	}
 
-	private void drawBox(){
-		double size =Math.abs(corners.get(0,0)[0]-corners.get(1,0)[0]);
+	private void drawBoxes(){
 
-		/*model=builder.createBox((float) size,(float)size,(float)size,
-				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
-				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-		instance = new ModelInstance(model,(float) wc.get(0,0)[0],(float) wc.get(0,0)[1],(float) wc.get(0,0)[2]);*/
-
-		model = builder.createBox(1,1,1,
+		model = builder.createBox(boxSize,boxSize,boxSize,
 				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
 				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
 		
 		
-		for(int y=0; y <6; y++) {
-			for(int x=0; x<4; x++) {
+		for(int y=0; y <4; y++) {
+			for(int x=0; x<6; x++) {
 				ModelInstance inst = new ModelInstance(model);
 				
 				if((x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)){
-					inst.transform.translate(0.5f + x, 0.5f, 0.5f + y);	
+					inst.transform.translate(1.75f + x*boxSize, 1.75f + y*boxSize, -1.75f);	
 					instances.add(inst);
 				}
-				
 			}
 		}
-//		
-//		ModelInstance inst = new ModelInstance(model);
-//		inst.transform.translate(0.5f, 0.5f, 0.5f);
-//		instances.add(inst);
-//		
-//		ModelInstance inst2 = new ModelInstance(model);
-//		inst2.transform.translate(2.5f, 0.5f, 0.5f);
-//		instances.add(inst2);
-//		
-//		ModelInstance inst3 = new ModelInstance(model);
-//		inst3.transform.translate(0.5f, 0.5f, 2.5f);
-//		instances.add(inst3);
-//		
-//		ModelInstance inst4 = new ModelInstance(model);
-//		inst4.transform.translate(2.5f, 0.5f, 2.5f);
-//		instances.add(inst4);
-//		
-//		ModelInstance inst5 = new ModelInstance(model);
-//		inst5.transform.translate(1.5f, 0.5f, 1.5f);
-//		instances.add(inst5);
-		
-
-		
-		
 	}
 	@Override
 	public void pause() {
@@ -257,9 +207,9 @@ public class Exercise2 implements ApplicationListener {
 		System.out.println("Do magic camera stuff!");
 		List<Mat> rvecs = new ArrayList<>();
 		List<Mat> tvecs = new ArrayList<>();
-		intrinsic.put(0, 0, 1);
-		intrinsic.put(1, 1, 1); //Tutorial did this...
-		Calib3d.calibrateCamera(worldPoints, imagePoints, grayFrame.size(), intrinsic, distCoeffs, rvecs, tvecs);
+		calibIntrinsic.put(0, 0, 1);
+		calibIntrinsic.put(1, 1, 1); //Tutorial did this...
+		Calib3d.calibrateCamera(worldPoints, imagePoints, grayFrame.size(), calibIntrinsic, distCoeffs, rvecs, tvecs);
 		//System.out.println("Did magic camera stuff!");
 		//System.out.println("Intrinsic: " + intrinsic.dump());
 		//System.out.println("distCoeffs: " + distCoeffs.dump());

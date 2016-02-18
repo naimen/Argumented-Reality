@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
@@ -89,6 +90,22 @@ public class Basic3DTest implements ApplicationListener {
         		new Material(ColorAttribute.createDiffuse(Color.RED)), 
         		Usage.Position | Usage.Normal);
         instances.add(new ModelInstance(model));
+        
+        model = modelBuilder.createBox(3.5f,3.5f,3.5f,
+				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
+				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
+		
+        for(int y=0; y <4; y++) {
+			for(int x=0; x<6; x++) {
+				ModelInstance inst = new ModelInstance(model);
+				
+				if((x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)){
+					inst.transform.translate(1.75f + x*3.5f, 1.75f + y*3.5f, 1.75f);	
+					instances.add(inst);
+				}
+				
+			}
+		}
         
 //        Gdx.graphics.setContinuousRendering(false);
 //        Gdx.graphics.requestRendering();
