@@ -41,10 +41,9 @@ public class Exercise3 implements ApplicationListener {
 		//find contours
 		contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(binaryFrame.clone(), contours, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-		
-		
+
 		MatOfPoint bestMarker = null;
-		
+		Rect makerOutbound = new Rect(0,0,0,0);
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
 		for(int i=0; i<contours.size(); i++)
 		{
@@ -57,10 +56,16 @@ public class Exercise3 implements ApplicationListener {
 					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
 					Imgproc.isContourConvex((approxPoly2)))
 			{
-				Imgproc.line(frame, new Point(approxPoly2.get(0, 0)), new Point(approxPoly2.get(1, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(1, 0)), new Point(approxPoly2.get(2, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(0, 0)), new Point(approxPoly2.get(3, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(2, 0)), new Point(approxPoly2.get(3, 0)), new Scalar(0,255,0), 2);
+
+				if (makerOutbound.area()<Imgproc.boundingRect(approxPoly2).area()) {
+					makerOutbound=Imgproc.boundingRect(approxPoly2);
+					bestMarker = approxPoly2;
+				}
+				Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0,255,0), 2);
+				Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0,255,0), 2);
+				Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
+				Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
+
 
 			}
 		}
