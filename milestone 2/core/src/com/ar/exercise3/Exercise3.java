@@ -6,9 +6,7 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
-import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
@@ -32,7 +30,6 @@ public class Exercise3 implements ApplicationListener {
 	private Mat frame;
 	private Mat grayFrame;
 	private Mat binaryFrame;
-	private long time;
 	private ArrayList<MatOfPoint> contours;
 	
 	//Libgdx coordinate system vars
@@ -53,7 +50,6 @@ public class Exercise3 implements ApplicationListener {
 		frame = new Mat();
 		grayFrame = new Mat();
 		binaryFrame = new Mat();
-		time = System.currentTimeMillis();
 		contours = new ArrayList<MatOfPoint>();
 		
 		//Rotation-translation stuff
@@ -168,9 +164,6 @@ public class Exercise3 implements ApplicationListener {
         		Usage.Position | Usage.Normal);
         instances.add(new ModelInstance(model));
         
-        model = builder.createBox(3.5f,3.5f,3.5f,
-				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
-				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
 	}
 	
 	@Override
