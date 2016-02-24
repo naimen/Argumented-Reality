@@ -1,6 +1,6 @@
 package com.ar.exercise3.desktop;
 
-import com.ar.exercise3.Exercise3;
+import com.ar.exercise3.*;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
