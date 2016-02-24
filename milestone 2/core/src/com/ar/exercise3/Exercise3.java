@@ -57,14 +57,26 @@ public class Exercise3 implements ApplicationListener {
 					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
 					Imgproc.isContourConvex((approxPoly2)))
 			{
-				Imgproc.line(frame, new Point(approxPoly2.get(0, 0)), new Point(approxPoly2.get(1, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(1, 0)), new Point(approxPoly2.get(2, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(0, 0)), new Point(approxPoly2.get(3, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(approxPoly2.get(2, 0)), new Point(approxPoly2.get(3, 0)), new Scalar(0,255,0), 2);
-
+				
+				if(bestMarker == null) {
+					bestMarker = approxPoly2;
+				}
+				
+				Point p1 = new Point(bestMarker.get(0, 0));
+				Point p2 = new Point(bestMarker.get(2, 0));
+				Double dist = 
+				if(bestMarker.get(0, 0)[0] < approxPoly2.get(0, 0)[0]) {
+					bestMarker = approxPoly2;
+				}
 			}
 		}
 		
+		if(bestMarker != null) {
+			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0,255,0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0,255,0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
+		}
 
 		if(!cam.isOpened()){
 			System.out.println("Error");
