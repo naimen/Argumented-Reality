@@ -15,7 +15,6 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
-
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
@@ -44,7 +43,11 @@ public class Exercise3 implements ApplicationListener {
 	private Mat rvec;
 	private Mat tvec;
 
-	@Override
+    //Homography stuff
+    private Mat homographyPlane;
+    private MatOfPoint2f drawboard;
+
+    @Override
 	public void create() {
 		cam = new VideoCapture(0);
 		frame = new Mat();
@@ -78,7 +81,10 @@ public class Exercise3 implements ApplicationListener {
 		
 		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
-	}
+
+        homographyPlane =new Mat();
+        drawboard = new MatOfPoint2f(new Point(0,0),new Point(100,0),new Point(100,100),new Point(0,100));
+    }
 
 	@Override
 	public void resize(int width, int height) {
@@ -109,31 +115,32 @@ public class Exercise3 implements ApplicationListener {
 			MatOfPoint approxPoly2 = new MatOfPoint(approxPoly.toArray());
 			if(approxPoly2.total()==4 &&
 					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
-					Imgproc.isContourConvex((approxPoly2)))
-			{
+					Imgproc.isContourConvex((approxPoly2))) {
 
-				if (makerOutbound.area()<Imgproc.boundingRect(approxPoly2).area()) {
-					makerOutbound=Imgproc.boundingRect(approxPoly2);
-					bestMarker = approxPoly2;
-				}
-				Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
-				Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0,255,0), 2);
-				
-				MatOfPoint2f wew = new MatOfPoint2f(approxPoly2.toArray());
-				pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth,camHeight), camWidth, camHeight);
-		        Calib3d.solvePnP(wc, wew, UtilAR.getDefaultIntrinsics(camWidth,camHeight), UtilAR.getDefaultDistortionCoefficients(),rvec,tvec);
-				UtilAR.setCameraByRT(rvec,tvec,pcam);
-			}
-		}
-		
-		
+                if (makerOutbound.area() < Imgproc.boundingRect(approxPoly2).area()) {
+                    makerOutbound = Imgproc.boundingRect(approxPoly2);
+                    bestMarker = approxPoly2;
+                }
+                Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0, 255, 0), 2);
+                Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0, 255, 0), 2);
+                Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+                Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+
+                MatOfPoint2f wew = new MatOfPoint2f(approxPoly2.toArray());
+                pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
+                Calib3d.solvePnP(wc, wew, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+                UtilAR.setCameraByRT(rvec, tvec, pcam);
+                homographyPlane = Calib3d.findHomography(new MatOfPoint2f(bestMarker.toArray()), drawboard);
+                Imgproc.warpPerspective(bestMarker, drawboard,homographyPlane, drawboard.size());
+            }
+        }
+        System.out.println(homographyPlane.dump());
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
 			//Imgproc.drawContours(frame, contours, -1, new Scalar(0,0,255), 2);
 			UtilAR.imDrawBackground(frame);
+            UtilAR.imShow(drawboard);
 
 		}
 		
