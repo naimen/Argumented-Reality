@@ -48,6 +48,7 @@ public class Exercise3 implements ApplicationListener {
     private MatOfPoint2f drawboard;
     private Mat outputMat;
     private Mat newframe;
+    private ArrayList<MatOfPoint> markerBorderList;
 
     @Override
 	public void create() {
@@ -56,6 +57,7 @@ public class Exercise3 implements ApplicationListener {
 		grayFrame = new Mat();
 		binaryFrame = new Mat();
 		contours = new ArrayList<MatOfPoint>();
+		markerBorderList = new ArrayList<MatOfPoint>();
 		
 		//Rotation-translation stuff
 		wc = new MatOfPoint3f();
@@ -125,28 +127,44 @@ public class Exercise3 implements ApplicationListener {
 			if(approxPoly2.total()==4 &&
 					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
 					Imgproc.isContourConvex((approxPoly2))) {
+				
+				markerBorderList.add(approxPoly2);
 
-                if (makerOutbound.area() < Imgproc.boundingRect(approxPoly2).area()) {
-                    makerOutbound = Imgproc.boundingRect(approxPoly2);
-                    bestMarker = approxPoly2;
-                }
-                Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0, 255, 0), 2);
-                Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0, 255, 0), 2);
-                Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
-                Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+			}
+		}
 
-                MatOfPoint2f markerCorners = new MatOfPoint2f(bestMarker.toArray());
-                pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
-                Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
-                UtilAR.setCameraByRT(rvec, tvec, pcam);
-                
-                homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
-                Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
-                
-                outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
-            }
-        }
-        System.out.println(homographyPlane.dump());
+		Double inside;
+		for(MatOfPoint m1 : markerBorderList) {
+			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
+			for(MatOfPoint m2 : markerBorderList) {
+				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
+				if(inside > 0) {
+					bestMarker = m1;
+				}
+			}
+		}
+
+		markerBorderList.clear();
+
+		if(bestMarker != null) {
+
+			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+
+			MatOfPoint2f markerCorners = new MatOfPoint2f(bestMarker.toArray());
+			pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
+			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+			UtilAR.setCameraByRT(rvec, tvec, pcam);
+
+			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
+			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
+
+			outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
+		}
+
+		System.out.println(homographyPlane.dump());
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
