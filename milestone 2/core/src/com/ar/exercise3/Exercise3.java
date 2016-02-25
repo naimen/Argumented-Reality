@@ -49,15 +49,17 @@ public class Exercise3 implements ApplicationListener {
     private Mat outputMat;
     private Mat newframe;
     private ArrayList<MatOfPoint> markerBorderList;
+    private ArrayList<MatOfPoint> sixBorderList;
 
     @Override
 	public void create() {
-		cam = new VideoCapture(1);
+		cam = new VideoCapture(0);
 		frame = new Mat();
 		grayFrame = new Mat();
 		binaryFrame = new Mat();
 		contours = new ArrayList<MatOfPoint>();
 		markerBorderList = new ArrayList<MatOfPoint>();
+		sixBorderList = new ArrayList<MatOfPoint>();
 		
 		//Rotation-translation stuff
 		wc = new MatOfPoint3f();
@@ -65,6 +67,13 @@ public class Exercise3 implements ApplicationListener {
 		wc.push_back(new MatOfPoint3f(new Point3(5f, 5f, 0.0f)));
 		wc.push_back(new MatOfPoint3f(new Point3(5f, -5f, 0.0f)));
 		wc.push_back(new MatOfPoint3f(new Point3(-5f, -5f, 0.0f)));
+		
+//		wc.push_back(new MatOfPoint3f(new Point3(-5f, 2f, 0.0f)));
+//		wc.push_back(new MatOfPoint3f(new Point3(-2f, 2f, 0.0f)));
+//		wc.push_back(new MatOfPoint3f(new Point3(-2f, 5f, 0.0f)));
+//		wc.push_back(new MatOfPoint3f(new Point3(5f, 5f, 0.0f)));
+//		wc.push_back(new MatOfPoint3f(new Point3(5f, -5f, 0.0f)));
+//		wc.push_back(new MatOfPoint3f(new Point3(-5f, -5f, 0.0f)));
 		
 		rvec = new Mat();
 		tvec = new Mat();
@@ -129,14 +138,21 @@ public class Exercise3 implements ApplicationListener {
 					Imgproc.isContourConvex((approxPoly2))) {
 				
 				markerBorderList.add(approxPoly2);
-
 			}
+			
+			if(approxPoly2.total()==6 &&
+					Math.abs(Imgproc.contourArea(coutourMat))>1000
+					) {
+				System.out.println("wee");
+				sixBorderList.add(approxPoly2);
+			}
+			
 		}
 
 		Double inside;
 		for(MatOfPoint m1 : markerBorderList) {
 			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
-			for(MatOfPoint m2 : markerBorderList) {
+			for(MatOfPoint m2 : sixBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
 					bestMarker = m1;
@@ -145,6 +161,7 @@ public class Exercise3 implements ApplicationListener {
 		}
 
 		markerBorderList.clear();
+		sixBorderList.clear();
 
 		if(bestMarker != null) {
 
