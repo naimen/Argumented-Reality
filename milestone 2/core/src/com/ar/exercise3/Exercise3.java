@@ -46,6 +46,8 @@ public class Exercise3 implements ApplicationListener {
     //Homography stuff
     private Mat homographyPlane;
     private MatOfPoint2f drawboard;
+    private Mat outputMat;
+    private Mat newframe;
 
     @Override
 	public void create() {
@@ -65,6 +67,9 @@ public class Exercise3 implements ApplicationListener {
 		rvec = new Mat();
 		tvec = new Mat();
 		
+		outputMat = new Mat(100, 100, CvType.CV_8UC4);
+		newframe = new Mat();
+		
 		//Libgdx coordinate system stuff
 		builder = new ModelBuilder();
     	instances = new Array<ModelInstance>();
@@ -82,8 +87,12 @@ public class Exercise3 implements ApplicationListener {
 		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-        homographyPlane =new Mat();
-        drawboard = new MatOfPoint2f(new Point(0,0),new Point(100,0),new Point(100,100),new Point(0,100));
+        homographyPlane = new Mat();
+        drawboard = new MatOfPoint2f();
+        drawboard.push_back(new MatOfPoint2f(new Point(0f,0f)));
+        drawboard.push_back(new MatOfPoint2f(new Point(0f,100f)));
+        drawboard.push_back(new MatOfPoint2f(new Point(100f,100f)));
+        drawboard.push_back(new MatOfPoint2f(new Point(100f,0f)));
     }
 
 	@Override
@@ -126,12 +135,15 @@ public class Exercise3 implements ApplicationListener {
                 Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
                 Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
 
-                MatOfPoint2f wew = new MatOfPoint2f(approxPoly2.toArray());
+                MatOfPoint2f markerCorners = new MatOfPoint2f(bestMarker.toArray());
                 pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
-                Calib3d.solvePnP(wc, wew, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+                Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
                 UtilAR.setCameraByRT(rvec, tvec, pcam);
-                homographyPlane = Calib3d.findHomography(new MatOfPoint2f(bestMarker.toArray()), drawboard);
-                Imgproc.warpPerspective(bestMarker, drawboard,homographyPlane, drawboard.size());
+                
+                homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
+                Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
+                
+                outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
             }
         }
         System.out.println(homographyPlane.dump());
@@ -140,8 +152,6 @@ public class Exercise3 implements ApplicationListener {
 		}else if (frameRead){
 			//Imgproc.drawContours(frame, contours, -1, new Scalar(0,0,255), 2);
 			UtilAR.imDrawBackground(frame);
-            UtilAR.imShow(drawboard);
-
 		}
 		
 		batch.begin(pcam);
@@ -154,7 +164,7 @@ public class Exercise3 implements ApplicationListener {
         Vector3 zeroVect = new Vector3(0f, 0f, 0f);
         Vector3 xAxis = new Vector3(5f, 0f, 0f);
         Vector3 yAxis = new Vector3(0f, 5f, 0f);
-        Vector3 zAxis = new Vector3(0f, 0f, -5f);
+        Vector3 zAxis = new Vector3(0f, 0f, 5f);
         
         model = builder.createArrow(zeroVect, xAxis,
         		new Material(ColorAttribute.createDiffuse(Color.GREEN)), 
