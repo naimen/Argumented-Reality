@@ -20,7 +20,7 @@ public class Exercise3 implements ApplicationListener {
 
 	@Override
 	public void create() {
-		cam = new VideoCapture(0);
+		cam = new VideoCapture(1);
 		frame = new Mat();
 		grayFrame = new Mat();
 		binaryFrame = new Mat();
