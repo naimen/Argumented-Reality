@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import org.opencv.calib3d.Calib3d;
@@ -37,6 +38,8 @@ public class Exercise3 implements ApplicationListener {
 	private ModelBuilder builder;
 	private Model model;
 	private ModelBatch batch;
+	private ModelInstance testInstance;
+	private ModelInstance testInstance2;
 	
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
@@ -91,6 +94,7 @@ public class Exercise3 implements ApplicationListener {
     	
     	pcam = new PerspectiveOffCenterCamera();
 		pcam.update();
+		pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
 		
 		batch = new ModelBatch();
 		drawCoordinateSystem();
@@ -123,8 +127,10 @@ public class Exercise3 implements ApplicationListener {
 		contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(binaryFrame.clone(), contours, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
-		MatOfPoint bestMarker = null;
+		MatOfPoint marker1 = null;
+		MatOfPoint marker2 = null;
 		Rect makerOutbound = new Rect(0,0,0,0);
+		
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
 		for(int i=0; i<contours.size(); i++)
 		{
@@ -133,29 +139,40 @@ public class Exercise3 implements ApplicationListener {
 			//filter polygons
 
 			MatOfPoint approxPoly2 = new MatOfPoint(approxPoly.toArray());
+			
+			//Fill list of polygons with 4 corners (our marker borders)
 			if(approxPoly2.total()==4 &&
 					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
 					Imgproc.isContourConvex((approxPoly2))) {
-				
 				markerBorderList.add(approxPoly2);
 			}
-			
-			if(approxPoly2.total()==6 &&
-					Math.abs(Imgproc.contourArea(coutourMat))>1000
-					) {
-				System.out.println("wee");
+
+			//Fill list of polygons with 6 borders (Most likely our marker)
+			if(approxPoly2.total()==6 && Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				sixBorderList.add(approxPoly2);
 			}
 			
 		}
 
+		
+		//Check if a point in our 6-point polygon is inside one of our markers, if so, we found our marker
 		Double inside;
 		for(MatOfPoint m1 : markerBorderList) {
 			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
 			for(MatOfPoint m2 : sixBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					bestMarker = m1;
+					marker1 = m1;
+				}
+			}
+		}
+		
+		for(MatOfPoint m1 : markerBorderList) {
+			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
+			for(MatOfPoint m2 : markerBorderList) {
+				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
+				if(inside > 0) {
+					marker2 = m1;
 				}
 			}
 		}
@@ -163,25 +180,42 @@ public class Exercise3 implements ApplicationListener {
 		markerBorderList.clear();
 		sixBorderList.clear();
 
-		if(bestMarker != null) {
+		if(marker1 != null) {
 
-			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(1, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(bestMarker.get(1, 0)), new Point(bestMarker.get(2, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(bestMarker.get(0, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(bestMarker.get(2, 0)), new Point(bestMarker.get(3, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(1, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker1.get(1, 0)), new Point(marker1.get(2, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker1.get(2, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
 
-			MatOfPoint2f markerCorners = new MatOfPoint2f(bestMarker.toArray());
-			pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
+			MatOfPoint2f markerCorners = new MatOfPoint2f(marker1.toArray());
 			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
-			UtilAR.setCameraByRT(rvec, tvec, pcam);
+			
+			//Transform our object to the marker
+			Matrix4 transformMatrix = testInstance.transform.cpy();
+			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
+			testInstance.transform.set(transformMatrix);
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
 
 			outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
 		}
+		
+		if(marker2 != null) {
+			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(1, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker2.get(1, 0)), new Point(marker2.get(2, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
+			Imgproc.line(frame, new Point(marker2.get(2, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
+			
+			MatOfPoint2f markerCorners = new MatOfPoint2f(marker2.toArray());
+			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+			
+			//Transform our object to the marker
+			Matrix4 transformMatrix = testInstance2.transform.cpy();
+			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
+			testInstance2.transform.set(transformMatrix);
+		}
 
-		System.out.println(homographyPlane.dump());
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
@@ -207,7 +241,7 @@ public class Exercise3 implements ApplicationListener {
         instances.add(new ModelInstance(model));
         
         model = builder.createArrow(zeroVect, yAxis,
-        		new Material(ColorAttribute.createDiffuse(Color.BLUE)), 
+        		new Material(ColorAttribute.createDiffuse(Color.BLUE)),
         		Usage.Position | Usage.Normal);
         instances.add(new ModelInstance(model));
         
@@ -215,6 +249,20 @@ public class Exercise3 implements ApplicationListener {
         		new Material(ColorAttribute.createDiffuse(Color.RED)), 
         		Usage.Position | Usage.Normal);
         instances.add(new ModelInstance(model));
+        
+        
+        //Test arrows for double markers
+        model = builder.createArrow(zeroVect, zAxis,
+        		new Material(ColorAttribute.createDiffuse(Color.RED)), 
+        		Usage.Position | Usage.Normal);
+        testInstance = new ModelInstance(model);
+        instances.add(testInstance);
+        
+        model = builder.createArrow(zeroVect, zAxis,
+        		new Material(ColorAttribute.createDiffuse(Color.RED)), 
+        		Usage.Position | Usage.Normal);
+        testInstance2 = new ModelInstance(model);
+        instances.add(testInstance2);
         
 	}
 	
