@@ -22,6 +22,9 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 public class Exercise3 implements ApplicationListener {
 	private VideoCapture cam;
@@ -129,6 +132,7 @@ public class Exercise3 implements ApplicationListener {
 
 		MatOfPoint marker1 = null;
 		MatOfPoint marker2 = null;
+
 		Rect makerOutbound = new Rect(0,0,0,0);
 		
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
@@ -141,17 +145,17 @@ public class Exercise3 implements ApplicationListener {
 			MatOfPoint approxPoly2 = new MatOfPoint(approxPoly.toArray());
 			
 			//Fill list of polygons with 4 corners (our marker borders)
-			if(approxPoly2.total()==4 &&
-					Math.abs(Imgproc.contourArea(coutourMat))>1000 &&
-					Imgproc.isContourConvex((approxPoly2))) {
+			if(approxPoly2.total()==4
+					&& Math.abs(Imgproc.contourArea(coutourMat))>=8000
+					&& Math.abs(Imgproc.contourArea(coutourMat))<100000
+					&& Imgproc.isContourConvex((approxPoly2))) {
 				markerBorderList.add(approxPoly2);
 			}
-
 			//Fill list of polygons with 6 borders (Most likely our marker)
-			if(approxPoly2.total()==6 && Math.abs(Imgproc.contourArea(coutourMat))>1000) {
+			if(//approxPoly2.total()==6 &&
+					 Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				sixBorderList.add(approxPoly2);
 			}
-			
 		}
 
 		
@@ -162,7 +166,7 @@ public class Exercise3 implements ApplicationListener {
 			for(MatOfPoint m2 : sixBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					marker1 = m1;
+					marker1 = sortCornerPoints(m1);
 				}
 			}
 		}
@@ -172,7 +176,7 @@ public class Exercise3 implements ApplicationListener {
 			for(MatOfPoint m2 : markerBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					marker2 = m1;
+					marker2 = sortCornerPoints(m1);
 				}
 			}
 		}
@@ -215,7 +219,6 @@ public class Exercise3 implements ApplicationListener {
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance2.transform.set(transformMatrix);
 		}
-
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
@@ -284,5 +287,27 @@ public class Exercise3 implements ApplicationListener {
 		batch.dispose();
 		model.dispose();
 	}
+
+	public MatOfPoint sortCornerPoints(MatOfPoint m)
+	{
+		List<Point> temp = m.toList();
+		Collections.sort(temp, new Comparator<Point>() {
+			@Override
+			public int compare(Point o1, Point o2) {
+				if (Math.sqrt(o1.x+o1.y)>Math.sqrt(o2.x+o2.y)) return -1;
+				else  return 1;
+			}
+		});
+		List<Point> sorted = new ArrayList();
+		sorted.add(temp.get(3));
+		sorted.add(temp.get(2));
+		sorted.add(temp.get(0));
+		sorted.add(temp.get(1));
+
+		MatOfPoint res=new MatOfPoint();
+		res.fromList(sorted);
+		return res;
+	}
+
 
 }
