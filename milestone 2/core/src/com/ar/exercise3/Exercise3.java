@@ -4,6 +4,8 @@ import com.ar.util.PerspectiveOffCenterCamera;
 import com.ar.util.UtilAR;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.assets.loaders.ModelLoader;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
@@ -12,6 +14,8 @@ import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
+import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
@@ -35,11 +39,14 @@ public class Exercise3 implements ApplicationListener {
 	//Libgdx coordinate system vars
 	private PerspectiveOffCenterCamera pcam;
 	private Array<ModelInstance> instances;
+	private AssetManager assets;
 	private ModelBuilder builder;
+	private ModelLoader loader;
 	private Model model;
 	private ModelBatch batch;
 	private ModelInstance testInstance;
 	private ModelInstance testInstance2;
+	private boolean loading;
 	
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
@@ -49,10 +56,12 @@ public class Exercise3 implements ApplicationListener {
     //Homography stuff
     private Mat homographyPlane;
     private MatOfPoint2f drawboard;
+    private MatOfPoint2f drawboard2;
     private Mat outputMat;
-    private Mat newframe;
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
+    
+    String objpath = "BEAR_BLK.obj";
 
     @Override
 	public void create() {
@@ -71,22 +80,18 @@ public class Exercise3 implements ApplicationListener {
 		wc.push_back(new MatOfPoint3f(new Point3(5f, -5f, 0.0f)));
 		wc.push_back(new MatOfPoint3f(new Point3(-5f, -5f, 0.0f)));
 		
-//		wc.push_back(new MatOfPoint3f(new Point3(-5f, 2f, 0.0f)));
-//		wc.push_back(new MatOfPoint3f(new Point3(-2f, 2f, 0.0f)));
-//		wc.push_back(new MatOfPoint3f(new Point3(-2f, 5f, 0.0f)));
-//		wc.push_back(new MatOfPoint3f(new Point3(5f, 5f, 0.0f)));
-//		wc.push_back(new MatOfPoint3f(new Point3(5f, -5f, 0.0f)));
-//		wc.push_back(new MatOfPoint3f(new Point3(-5f, -5f, 0.0f)));
-		
 		rvec = new Mat();
 		tvec = new Mat();
 		
 		outputMat = new Mat(100, 100, CvType.CV_8UC4);
-		newframe = new Mat();
 		
 		//Libgdx coordinate system stuff
 		builder = new ModelBuilder();
+		//loader = new G3dModelLoader();
     	instances = new Array<ModelInstance>();
+    	assets = new AssetManager();
+    	assets.load(objpath, Model.class);
+    	loading = true;
     	
     	cam.read(frame);
 		camWidth=(float) cam.get(3);
@@ -110,6 +115,14 @@ public class Exercise3 implements ApplicationListener {
         drawboard.push_back(new MatOfPoint2f(new Point(100f,0f)));
     }
 
+    private void doneLoading() {
+        Model obj = assets.get(objpath, Model.class);
+        testInstance = new ModelInstance(obj); 
+        testInstance.transform.setToScaling(5f, 5f, 5f);
+        instances.add(testInstance);
+        loading = false;
+    }
+    
 	@Override
 	public void resize(int width, int height) {
 		// TODO Auto-generated method stub
@@ -117,6 +130,10 @@ public class Exercise3 implements ApplicationListener {
 
 	@Override
 	public void render() {
+		System.out.println(loading);
+		if (loading && assets.update())
+            doneLoading();
+		
 		//turn the read frame to binary
 		boolean frameRead = cam.read(frame);
 		
@@ -180,7 +197,7 @@ public class Exercise3 implements ApplicationListener {
 		markerBorderList.clear();
 		sixBorderList.clear();
 
-		if(marker1 != null) {
+		if(marker1 != null && loading == false) {
 
 			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(1, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker1.get(1, 0)), new Point(marker1.get(2, 0)), new Scalar(0, 255, 0), 2);
@@ -194,6 +211,7 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = testInstance.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance.transform.set(transformMatrix);
+			testInstance.transform.scale(5f, 5f, 5f);
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -214,6 +232,11 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = testInstance2.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance2.transform.set(transformMatrix);
+			
+			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
+			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
+
+			outputMat.copyTo(frame.rowRange(0, 100).colRange(100, 200));
 		}
 
 		if(!cam.isOpened()){
@@ -252,11 +275,16 @@ public class Exercise3 implements ApplicationListener {
         
         
         //Test arrows for double markers
-        model = builder.createArrow(zeroVect, zAxis,
-        		new Material(ColorAttribute.createDiffuse(Color.RED)), 
-        		Usage.Position | Usage.Normal);
-        testInstance = new ModelInstance(model);
-        instances.add(testInstance);
+//        model = builder.createArrow(zeroVect, zAxis,
+//        		new Material(ColorAttribute.createDiffuse(Color.RED)), 
+//        		Usage.Position | Usage.Normal);
+        
+        
+//        model = loader.loadModel(Gdx.files.internal("spyro.obj"));
+//        System.out.println(model);
+//        testInstance = new ModelInstance(model);
+//        instances.add(testInstance);
+        
         
         model = builder.createArrow(zeroVect, zAxis,
         		new Material(ColorAttribute.createDiffuse(Color.RED)), 
