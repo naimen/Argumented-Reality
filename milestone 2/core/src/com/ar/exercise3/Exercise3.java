@@ -14,8 +14,6 @@ import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
-import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
-import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
@@ -183,7 +181,7 @@ public class Exercise3 implements ApplicationListener {
 			for(MatOfPoint m2 : sixBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					marker1 = sortCornerPoints(m1);
+					marker1 = sortCornerPoints(m1,m2);
 				}
 			}
 		}
@@ -193,7 +191,7 @@ public class Exercise3 implements ApplicationListener {
 			for(MatOfPoint m2 : markerBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					marker2 = sortCornerPoints(m1);
+					marker2 = sortCornerPoints(m1,m2);
 				}
 			}
 		}
@@ -316,21 +314,37 @@ public class Exercise3 implements ApplicationListener {
 		model.dispose();
 	}
 
-	public MatOfPoint sortCornerPoints(MatOfPoint m)
+	public MatOfPoint sortCornerPoints(MatOfPoint m1, MatOfPoint m2)
 	{
-		List<Point> temp = m.toList();
+		//find the calibration point in side our marker as a square in the top left corner
+		double calibDist = 0;
+		Point bestP = new Point();
+		for (Point p:m2.toList()) {
+			double dist = Imgproc.pointPolygonTest(new MatOfPoint2f(m1.toArray()),p,true);
+			if(Math.abs(dist)>calibDist)
+			{	bestP=p;
+				calibDist=dist;
+			}
+		}
+		//sort the corner according to the distance of calibP
+		final Point calibP=bestP;
+		List<Point> temp = m1.toList();
 		Collections.sort(temp, new Comparator<Point>() {
 			@Override
 			public int compare(Point o1, Point o2) {
-				if (Math.sqrt(o1.x+o1.y)>Math.sqrt(o2.x+o2.y)) return -1;
+				double calibx = calibP.x;
+				double caliby = calibP.y;
+				if (Math.sqrt(Math.pow((o1.x-calibx),2)+Math.pow((o1.y-caliby),2)) <
+						Math.sqrt(Math.pow((o2.x-calibx),2)+Math.pow((o2.y-caliby),2))) return -1;
 				else  return 1;
 			}
 		});
+		//place corners correctly
 		List<Point> sorted = new ArrayList();
-		sorted.add(temp.get(3));
-		sorted.add(temp.get(2));
 		sorted.add(temp.get(0));
 		sorted.add(temp.get(1));
+		sorted.add(temp.get(3));
+		sorted.add(temp.get(2));
 
 		MatOfPoint res=new MatOfPoint();
 		res.fromList(sorted);
