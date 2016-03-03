@@ -9,11 +9,9 @@ import com.badlogic.gdx.assets.loaders.ModelLoader;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
-import com.badlogic.gdx.graphics.g3d.Material;
-import com.badlogic.gdx.graphics.g3d.Model;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
-import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
@@ -43,6 +41,7 @@ public class Exercise3 implements ApplicationListener {
 	private ModelLoader loader;
 	private Model model;
 	private ModelBatch batch;
+	private Environment environment;
 	private ModelInstance testInstance;
 	private ModelInstance testInstance2;
 	private boolean loading;
@@ -59,7 +58,7 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "BEAR_BLK.obj";
+    String objpath = "BEAR_BLK.g3db";
 
     @Override
 	public void create() {
@@ -87,6 +86,7 @@ public class Exercise3 implements ApplicationListener {
 		builder = new ModelBuilder();
 		//loader = new G3dModelLoader();
     	instances = new Array<ModelInstance>();
+		environment = new Environment();
     	assets = new AssetManager();
     	assets.load(objpath, Model.class);
     	loading = true;
@@ -111,6 +111,8 @@ public class Exercise3 implements ApplicationListener {
         drawboard.push_back(new MatOfPoint2f(new Point(0f,100f)));
         drawboard.push_back(new MatOfPoint2f(new Point(100f,100f)));
         drawboard.push_back(new MatOfPoint2f(new Point(100f,0f)));
+		environment.set(new ColorAttribute(ColorAttribute.AmbientLight,1f,1f,1f,1f));
+		environment.add(new DirectionalLight().set(1f,1f,1f,-1f,-0.8f,-2f));
     }
 
     private void doneLoading() {
@@ -249,7 +251,7 @@ public class Exercise3 implements ApplicationListener {
 		}
 		
 		batch.begin(pcam);
-		batch.render(instances);
+		batch.render(instances,environment);
 		batch.end();
 	}
 	
