@@ -167,7 +167,7 @@ public class Exercise3 implements ApplicationListener {
 				markerBorderList.add(approxPoly2);
 			}
 			//Fill list of polygons with 6 borders (Most likely our marker)
-			if(//approxPoly2.total()==6 &&
+			if(approxPoly2.total()==6 &&
 					 Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				sixBorderList.add(approxPoly2);
 			}
@@ -191,7 +191,7 @@ public class Exercise3 implements ApplicationListener {
 			for(MatOfPoint m2 : markerBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
-					marker2 = sortCornerPoints(m1,m2);
+					marker2 = m1;
 				}
 			}
 		}
