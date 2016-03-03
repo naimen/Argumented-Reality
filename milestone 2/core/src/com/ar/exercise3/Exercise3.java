@@ -24,8 +24,6 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class Exercise3 implements ApplicationListener {
@@ -51,8 +49,7 @@ public class Exercise3 implements ApplicationListener {
 	
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
-	private Mat rvec;
-	private Mat tvec;
+
 
     //Homography stuff
     private Mat homographyPlane;
@@ -81,9 +78,9 @@ public class Exercise3 implements ApplicationListener {
 		wc.push_back(new MatOfPoint3f(new Point3(5f, -5f, 0.0f)));
 		wc.push_back(new MatOfPoint3f(new Point3(-5f, -5f, 0.0f)));
 		
-		rvec = new Mat();
+		/*rvec = new Mat();
 		tvec = new Mat();
-		
+		*/
 		outputMat = new Mat(100, 100, CvType.CV_8UC4);
 		
 		//Libgdx coordinate system stuff
@@ -131,7 +128,7 @@ public class Exercise3 implements ApplicationListener {
 
 	@Override
 	public void render() {
-		System.out.println(loading);
+		//System.out.println(loading);
 		if (loading && assets.update())
             doneLoading();
 		
@@ -200,6 +197,8 @@ public class Exercise3 implements ApplicationListener {
 		sixBorderList.clear();
 
 		if(marker1 != null && loading == false) {
+			Mat rvec = new Mat();
+			Mat tvec = new Mat();
 
 			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(1, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker1.get(1, 0)), new Point(marker1.get(2, 0)), new Scalar(0, 255, 0), 2);
@@ -222,6 +221,8 @@ public class Exercise3 implements ApplicationListener {
 		}
 		
 		if(marker2 != null) {
+			Mat rvec = new Mat();
+			Mat tvec = new Mat();
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(1, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(1, 0)), new Point(marker2.get(2, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
@@ -327,10 +328,18 @@ public class Exercise3 implements ApplicationListener {
 			}
 		}
 		//sort the corner according to the distance of calibP
+		calibDist = 100;
+		Point oriP=new Point();
+		for (Point p: m1.toList()) {
+			double dist = Math.sqrt(Math.pow((p.x-bestP.x),2)+Math.pow((p.y-bestP.y),2));
+			if (dist < calibDist){
+				calibDist=dist;
+				oriP=p;
+			}
+		}
+		/*List<Point> temp = m1.toList();
 		final Point calibP=bestP;
-		List<Point> temp = m1.toList();
 		Collections.sort(temp, new Comparator<Point>() {
-			@Override
 			public int compare(Point o1, Point o2) {
 				double calibx = calibP.x;
 				double caliby = calibP.y;
@@ -338,14 +347,20 @@ public class Exercise3 implements ApplicationListener {
 						Math.sqrt(Math.pow((o2.x-calibx),2)+Math.pow((o2.y-caliby),2))) return -1;
 				else  return 1;
 			}
-		});
+		});*/
 		//place corners correctly
+		int originalIdx=0;
 		List<Point> sorted = new ArrayList();
-		sorted.add(temp.get(0));
-		sorted.add(temp.get(1));
-		sorted.add(temp.get(3));
-		sorted.add(temp.get(2));
-
+		for (int i=0;i<4;i++){
+			if (oriP.equals(m1.toArray()[i]))
+			{
+				originalIdx=i;
+			}
+		}
+		sorted.add(m1.toArray()[originalIdx]);
+		sorted.add(m1.toArray()[(1+originalIdx)%4]);
+		sorted.add(m1.toArray()[(2+originalIdx)%4]);
+		sorted.add(m1.toArray()[(3+originalIdx)%4]);
 		MatOfPoint res=new MatOfPoint();
 		res.fromList(sorted);
 		return res;
