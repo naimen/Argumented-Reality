@@ -58,7 +58,7 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "BEAR_BLK.g3db";
+    String objpath = "maid_model/maid.g3dj";
 
     @Override
 	public void create() {
