@@ -214,7 +214,7 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = testInstance.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance.transform.set(transformMatrix);
-			testInstance.transform.scale(5f, 5f, 5f);
+			testInstance.transform.scale(0.05f, 0.05f, 0.05f);
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -249,7 +249,7 @@ public class Exercise3 implements ApplicationListener {
 			//Imgproc.drawContours(frame, contours, -1, new Scalar(0,0,255), 2);
 			UtilAR.imDrawBackground(frame);
 		}
-		
+
 		batch.begin(pcam);
 		batch.render(instances,environment);
 		batch.end();
