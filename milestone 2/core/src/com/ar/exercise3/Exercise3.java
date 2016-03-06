@@ -61,7 +61,7 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "maid_model/maid2.g3db";
+    String objpath = "maid_model/maid1.g3db";
 
     @Override
 	public void create() {
@@ -123,13 +123,14 @@ public class Exercise3 implements ApplicationListener {
 
     private void doneLoading() {
         Model obj = assets.get(objpath, Model.class);
+		System.out.println();
 		for (Material m: obj.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
 		testInstance = new ModelInstance(obj);
         testInstance.transform.setToScaling(5f, 5f, 5f);
-		//controller = new AnimationController(testInstance);
-		//controller.setAnimation("waving",-1);
+		controller = new AnimationController(testInstance);
+		controller.setAnimation(obj.animations.get(0).id,-1);
 		instances.add(testInstance);
         loading = false;
     }
