@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
+import com.badlogic.gdx.graphics.g3d.utils.AnimationController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
@@ -46,6 +47,7 @@ public class Exercise3 implements ApplicationListener {
 	private ModelInstance testInstance;
 	private ModelInstance testInstance2;
 	private boolean loading;
+	private AnimationController controller;
 	
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
@@ -59,7 +61,7 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "maid_model/maid1.g3db";
+    String objpath = "maid_model/maid2.g3db";
 
     @Override
 	public void create() {
@@ -89,6 +91,7 @@ public class Exercise3 implements ApplicationListener {
 		//loader = new G3dModelLoader();
     	instances = new Array<ModelInstance>();
 		environment = new Environment();
+
     	assets = new AssetManager();
     	assets.load(objpath, Model.class);
     	loading = true;
@@ -120,13 +123,14 @@ public class Exercise3 implements ApplicationListener {
 
     private void doneLoading() {
         Model obj = assets.get(objpath, Model.class);
-		Attribute test = new BlendingAttribute(false,1);
 		for (Material m: obj.materials) {
-			m.set(test);
+			m.set(new BlendingAttribute(false,1));
 		}
 		testInstance = new ModelInstance(obj);
         testInstance.transform.setToScaling(5f, 5f, 5f);
-        instances.add(testInstance);
+		//controller = new AnimationController(testInstance);
+		//controller.setAnimation("waving",-1);
+		instances.add(testInstance);
         loading = false;
     }
     
@@ -223,7 +227,9 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = testInstance.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance.transform.set(transformMatrix);
-			testInstance.transform.scale(0.005f, 0.005f, 0.005f);
+			testInstance.transform.scale(0.5f, 0.5f, 0.5f);
+			testInstance.transform.rotate(1,0,0,90);
+			controller.update(Gdx.graphics.getDeltaTime());
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -258,6 +264,7 @@ public class Exercise3 implements ApplicationListener {
 			//Imgproc.drawContours(frame, contours, -1, new Scalar(0,0,255), 2);
 			UtilAR.imDrawBackground(frame);
 		}
+
 
 		batch.begin(pcam);
 		batch.render(instances,environment);
