@@ -98,8 +98,10 @@ public class Exercise3 implements ApplicationListener {
 		camHeight=(float) cam.get(4);
     	
     	pcam = new PerspectiveOffCenterCamera();
-		pcam.update();
+		pcam.near=1f;
+		pcam.far=300f;
 		pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
+		pcam.update();
 		
 		batch = new ModelBatch();
 		//drawCoordinateSystem();
@@ -114,7 +116,6 @@ public class Exercise3 implements ApplicationListener {
 		environment.add(new DirectionalLight().set(0.5f,0.5f,0.5f,-1f,-0.8f,-2f));
 
 		Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
-
     }
 
     private void doneLoading() {
@@ -322,6 +323,8 @@ public class Exercise3 implements ApplicationListener {
 	public void dispose() {
 		cam.release();
 		batch.dispose();
+		instances.clear();
+		assets.dispose();
 	}
 
 	public MatOfPoint sortCornerPoints(MatOfPoint m1, MatOfPoint m2)
