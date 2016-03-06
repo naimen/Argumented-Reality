@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g3d.*;
+import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
@@ -58,7 +59,7 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "maid_model/maid.g3dj";
+    String objpath = "maid_model/maid1.g3db";
 
     @Override
 	public void create() {
@@ -84,6 +85,7 @@ public class Exercise3 implements ApplicationListener {
 		
 		//Libgdx coordinate system stuff
 		builder = new ModelBuilder();
+
 		//loader = new G3dModelLoader();
     	instances = new Array<ModelInstance>();
 		environment = new Environment();
@@ -100,10 +102,7 @@ public class Exercise3 implements ApplicationListener {
 		pcam.setByIntrinsics(UtilAR.getDefaultIntrinsics(camWidth, camHeight), camWidth, camHeight);
 		
 		batch = new ModelBatch();
-		drawCoordinateSystem();
-		
-		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+		//drawCoordinateSystem();
 
         homographyPlane = new Mat();
         drawboard = new MatOfPoint2f();
@@ -111,13 +110,20 @@ public class Exercise3 implements ApplicationListener {
         drawboard.push_back(new MatOfPoint2f(new Point(0f,100f)));
         drawboard.push_back(new MatOfPoint2f(new Point(100f,100f)));
         drawboard.push_back(new MatOfPoint2f(new Point(100f,0f)));
-		environment.set(new ColorAttribute(ColorAttribute.AmbientLight,1f,1f,1f,1f));
-		environment.add(new DirectionalLight().set(1f,1f,1f,-1f,-0.8f,-2f));
+		environment.set(new ColorAttribute(ColorAttribute.AmbientLight,0.5f,0.5f,0.5f,0.5f));
+		environment.add(new DirectionalLight().set(0.5f,0.5f,0.5f,-1f,-0.8f,-2f));
+
+		Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
+
     }
 
     private void doneLoading() {
         Model obj = assets.get(objpath, Model.class);
-        testInstance = new ModelInstance(obj); 
+		Attribute test = new BlendingAttribute(false,1);
+		for (Material m: obj.materials) {
+			m.set(test);
+		}
+		testInstance = new ModelInstance(obj);
         testInstance.transform.setToScaling(5f, 5f, 5f);
         instances.add(testInstance);
         loading = false;
@@ -130,6 +136,8 @@ public class Exercise3 implements ApplicationListener {
 
 	@Override
 	public void render() {
+		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		//System.out.println(loading);
 		if (loading && assets.update())
             doneLoading();
@@ -214,7 +222,7 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = testInstance.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance.transform.set(transformMatrix);
-			testInstance.transform.scale(0.05f, 0.05f, 0.05f);
+			testInstance.transform.scale(0.005f, 0.005f, 0.005f);
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -314,7 +322,6 @@ public class Exercise3 implements ApplicationListener {
 	public void dispose() {
 		cam.release();
 		batch.dispose();
-		model.dispose();
 	}
 
 	public MatOfPoint sortCornerPoints(MatOfPoint m1, MatOfPoint m2)
