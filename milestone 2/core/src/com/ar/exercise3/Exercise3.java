@@ -61,7 +61,8 @@ public class Exercise3 implements ApplicationListener {
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
     
-    String objpath = "maid_model/maid1.g3db";
+    String model1path = "maid_model/maid1.g3db";
+	String model2path = "maid_model/maid2.g3db";
 
     @Override
 	public void create() {
@@ -93,7 +94,8 @@ public class Exercise3 implements ApplicationListener {
 		environment = new Environment();
 
     	assets = new AssetManager();
-    	assets.load(objpath, Model.class);
+    	assets.load(model1path, Model.class);
+		assets.load(model2path, Model.class);
     	loading = true;
     	
     	cam.read(frame);
@@ -122,8 +124,8 @@ public class Exercise3 implements ApplicationListener {
     }
 
     private void doneLoading() {
-        Model obj = assets.get(objpath, Model.class);
-		System.out.println();
+        //model 1
+		Model obj = assets.get(model1path, Model.class);
 		for (Material m: obj.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
@@ -132,7 +134,16 @@ public class Exercise3 implements ApplicationListener {
 		controller = new AnimationController(testInstance);
 		controller.setAnimation(obj.animations.get(0).id,-1);
 		instances.add(testInstance);
-        loading = false;
+
+		//model 2
+		obj = assets.get(model2path,Model.class);
+		for (Material m: obj.materials) {
+			m.set(new BlendingAttribute(false,1));
+		}
+		testInstance2 = new ModelInstance(obj);
+
+		instances.add(testInstance2);
+		loading = false;
     }
     
 	@Override
@@ -142,15 +153,17 @@ public class Exercise3 implements ApplicationListener {
 
 	@Override
 	public void render() {
-		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		//System.out.println(loading);
 		if (loading && assets.update())
             doneLoading();
-		
+
+		pcam.update();
+		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT | GL20.GL_FRAMEBUFFER);
+
 		//turn the read frame to binary
 		boolean frameRead = cam.read(frame);
-		
+
 		Imgproc.cvtColor(frame, grayFrame, Imgproc.COLOR_BGR2GRAY);
 		Imgproc.threshold(grayFrame,binaryFrame,123,255,Imgproc.THRESH_BINARY);
 
@@ -162,7 +175,7 @@ public class Exercise3 implements ApplicationListener {
 		MatOfPoint marker2 = null;
 
 		Rect makerOutbound = new Rect(0,0,0,0);
-		
+
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
 		for(int i=0; i<contours.size(); i++)
 		{
@@ -171,7 +184,7 @@ public class Exercise3 implements ApplicationListener {
 			//filter polygons
 
 			MatOfPoint approxPoly2 = new MatOfPoint(approxPoly.toArray());
-			
+
 			//Fill list of polygons with 4 corners (our marker borders)
 			if(approxPoly2.total()==4
 					&& Math.abs(Imgproc.contourArea(coutourMat))>=8000
@@ -186,7 +199,7 @@ public class Exercise3 implements ApplicationListener {
 			}
 		}
 
-		
+
 		//Check if a point in our 6-point polygon is inside one of our markers, if so, we found our marker
 		Double inside;
 		for(MatOfPoint m1 : markerBorderList) {
@@ -198,7 +211,7 @@ public class Exercise3 implements ApplicationListener {
 				}
 			}
 		}
-		
+
 		for(MatOfPoint m1 : markerBorderList) {
 			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
 			for(MatOfPoint m2 : markerBorderList) {
@@ -223,7 +236,7 @@ public class Exercise3 implements ApplicationListener {
 
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker1.toArray());
 			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
-			
+
 			//Transform our object to the marker
 			Matrix4 transformMatrix = testInstance.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
@@ -238,22 +251,24 @@ public class Exercise3 implements ApplicationListener {
 			outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
 		}
 		
-		if(marker2 != null) {
+		if(marker2 != null && loading == false) {
 			Mat rvec = new Mat();
 			Mat tvec = new Mat();
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(1, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(1, 0)), new Point(marker2.get(2, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(2, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
-			
+
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker2.toArray());
 			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
-			
+
 			//Transform our object to the marker
 			Matrix4 transformMatrix = testInstance2.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			testInstance2.transform.set(transformMatrix);
-			
+			testInstance2.transform.scale(0.5f, 0.5f, 0.5f);
+			testInstance2.transform.rotate(1,0,0,90);
+
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
 
@@ -271,7 +286,7 @@ public class Exercise3 implements ApplicationListener {
 		batch.render(instances,environment);
 		batch.end();
 	}
-	
+
 	private void drawCoordinateSystem() {
 		//Coordinate System
         Vector3 zeroVect = new Vector3(0f, 0f, 0f);
