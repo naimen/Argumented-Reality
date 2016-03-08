@@ -16,7 +16,6 @@ import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.AnimationController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
-import com.badlogic.gdx.math.Quaternion;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import org.opencv.calib3d.Calib3d;
@@ -53,6 +52,8 @@ public class Exercise3 implements ApplicationListener {
 
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
+	private Point center1;
+	private Point center2;
 
 
     //Homography stuff
@@ -65,6 +66,10 @@ public class Exercise3 implements ApplicationListener {
     
     String model1path = "maid_model/maid1.g3db";
 	String model2path = "maid_model/maid2.g3db";
+	private Mat intrinsics;
+	private MatOfDouble distCoeffs;
+	private boolean m1ready;
+	private boolean m2ready;
 
 
 	@Override
@@ -76,7 +81,9 @@ public class Exercise3 implements ApplicationListener {
 		contours = new ArrayList<MatOfPoint>();
 		markerBorderList = new ArrayList<MatOfPoint>();
 		sixBorderList = new ArrayList<MatOfPoint>();
-		
+		intrinsics = UtilAR.getDefaultIntrinsics(camWidth, camHeight);
+		distCoeffs = UtilAR.getDefaultDistortionCoefficients();
+
 		//Rotation-translation stuff
 		wc = new MatOfPoint3f();
 		wc.push_back(new MatOfPoint3f(new Point3(-5f, 5f, 0.0f)));
@@ -123,29 +130,53 @@ public class Exercise3 implements ApplicationListener {
 		environment.set(new ColorAttribute(ColorAttribute.AmbientLight,0.5f,0.5f,0.5f,0.5f));
 		environment.add(new DirectionalLight().set(0.5f,0.5f,0.5f,-1f,-0.8f,-2f));
 
+		m2ready=false;
+
 		Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
     }
 
     private void doneLoading() {
         //model 1
-		Model obj = assets.get(model1path, Model.class);
-		for (Material m: obj.materials) {
+		final Model obj1 = assets.get(model1path, Model.class);
+		for (Material m: obj1.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
-		maid1 = new ModelInstance(obj);
+		maid1 = new ModelInstance(obj1);
         //maid1.transform.setToScaling(5f, 5f, 5f);
 		controller1 = new AnimationController(maid1);
-		controller1.setAnimation(obj.animations.get(0).id,-1); //0 lookaround; 1 nothing; 2 waving
+		//animation idx: 0 lookaround; 1 nothing; 2 waving
+		controller1.setAnimation(obj1.animations.get(0).id, -1, new AnimationController.AnimationListener() {
+			@Override
+			public void onEnd(AnimationController.AnimationDesc animation) {
+
+			}
+			@Override
+			public void onLoop(AnimationController.AnimationDesc animation) {
+				if(m2ready) controller1.animate(obj1.animations.get(2).id,-1,this,1f);
+				else controller1.animate(obj1.animations.get(0).id,-1,this,1f);
+			}
+		});
 		instances.add(maid1);
 
 		//model 2
-		obj = assets.get(model2path,Model.class);
-		for (Material m: obj.materials) {
+		final Model obj2 = assets.get(model2path,Model.class);
+		for (Material m: obj2.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
-		maid2 = new ModelInstance(obj);
+		maid2 = new ModelInstance(obj2);
 		controller2 = new AnimationController(maid2);
-		controller2.setAnimation(obj.animations.get(0).id,1);
+		//animation idx: 0 bow
+		controller2.setAnimation(obj2.animations.get(0).id, 1, new AnimationController.AnimationListener() {
+			@Override
+			public void onEnd(AnimationController.AnimationDesc animation) {
+
+			}
+
+			@Override
+			public void onLoop(AnimationController.AnimationDesc animation) {
+				if(m1ready) controller2.animate(obj2.animations.get(0).id,1,this,1f); //doesn't seems to have an effect
+			}
+		});
 		instances.add(maid2);
 		loading = false;
     }
@@ -160,6 +191,7 @@ public class Exercise3 implements ApplicationListener {
 	@Override
 	public void render() {
 		//System.out.println(loading);
+
 		if (loading && assets.update())
             doneLoading();
 
@@ -230,6 +262,7 @@ public class Exercise3 implements ApplicationListener {
 		sixBorderList.clear();
 
 		if(marker1 != null && loading == false) {
+			m1ready = true;
 			Mat rvec = new Mat();
 			Mat tvec = new Mat();
 
@@ -239,7 +272,9 @@ public class Exercise3 implements ApplicationListener {
 			Imgproc.line(frame, new Point(marker1.get(2, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
 
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker1.toArray());
-			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+
+
+			Calib3d.solvePnP(wc, markerCorners, intrinsics, distCoeffs, rvec, tvec);
 
 			//Transform our object to the marker
 			Matrix4 transformMatrix = maid1.transform.cpy();
@@ -248,10 +283,17 @@ public class Exercise3 implements ApplicationListener {
 			maid1.transform.scale(0.5f, 0.5f, 0.5f);
 			maid1.transform.rotate(1,0,0,90);
 			if (marker2 != null) {
-				float angle = angleBetween(new Point(marker1.get(0, 0)), new Point(marker2.get(0, 0)));
-				Quaternion rot = new Quaternion(0,1,0,angle);
-				maid1.transform.rotate(rot);
+				/*Point center1 = new Point((marker1.get(0, 0)[0]+marker1.get(3, 0)[0])/2,(marker1.get(0, 0)[1]+marker1.get(3, 0)[1])/2);
+				Point center2 = new Point((marker2.get(0, 0)[0]+marker2.get(3, 0)[0])/2,(marker2.get(0, 0)[1]+marker1.get(3, 0)[1])/2);
+				//Mat homeg1 = new MatOfPoint3f(new Point3(center1.x,center1.y,1));
+				//MatOfPoint3f homeg2 = new MatOfPoint3f(new Point3(center2.x,center2.y,1));
+				//homeg1 = intrinsics.inv().mul(homeg1);
+				Vector3 m1c=new Vector3((float) center1.x,(float) center1.y,1);
+				Vector3 m2c=new Vector3((float) center2.x,(float) center2.y,1);
+				maid1.transform.rotate(m1c,m2c);*/
+
 			}
+
 
 			//maid1.transform.setToLookAt();
 			controller1.update(Gdx.graphics.getDeltaTime());
@@ -261,17 +303,20 @@ public class Exercise3 implements ApplicationListener {
 
 			//outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
 		}
-		
+		else m1ready = false;
+
 		if(marker2 != null && loading == false) {
 			Mat rvec = new Mat();
 			Mat tvec = new Mat();
+			m2ready = true;
+
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(1, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(1, 0)), new Point(marker2.get(2, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
 			Imgproc.line(frame, new Point(marker2.get(2, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
 
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker2.toArray());
-			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
+			Calib3d.solvePnP(wc, markerCorners, intrinsics, distCoeffs, rvec, tvec);
 
 			//Transform our object to the marker
 			Matrix4 transformMatrix = maid2.transform.cpy();
@@ -286,6 +331,7 @@ public class Exercise3 implements ApplicationListener {
 
 			//outputMat.copyTo(frame.rowRange(0, 100).colRange(100, 200));
 		}
+		else m2ready = false;
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
