@@ -16,6 +16,7 @@ import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.AnimationController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Quaternion;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import org.opencv.calib3d.Calib3d;
@@ -142,10 +143,9 @@ public class Exercise3 implements ApplicationListener {
 		for (Material m: obj.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
-		System.out.println(obj.animations.get(0).id);
 		maid2 = new ModelInstance(obj);
 		controller2 = new AnimationController(maid2);
-		controller2.setAnimation(obj.animations.get(0).id,-1);
+		controller2.setAnimation(obj.animations.get(0).id,1);
 		instances.add(maid2);
 		loading = false;
     }
@@ -247,14 +247,19 @@ public class Exercise3 implements ApplicationListener {
 			maid1.transform.set(transformMatrix);
 			maid1.transform.scale(0.5f, 0.5f, 0.5f);
 			maid1.transform.rotate(1,0,0,90);
+			if (marker2 != null) {
+				float angle = angleBetween(new Point(marker1.get(0, 0)), new Point(marker2.get(0, 0)));
+				Quaternion rot = new Quaternion(0,1,0,angle);
+				maid1.transform.rotate(rot);
+			}
 
 			//maid1.transform.setToLookAt();
 			controller1.update(Gdx.graphics.getDeltaTime());
 
-			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
-			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
+			//homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
+			//Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
 
-			outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
+			//outputMat.copyTo(frame.rowRange(0, 100).colRange(0, 100));
 		}
 		
 		if(marker2 != null && loading == false) {
@@ -276,10 +281,10 @@ public class Exercise3 implements ApplicationListener {
 			maid2.transform.rotate(1,0,0,90);
 			controller2.update(Gdx.graphics.getDeltaTime());
 
-			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
-			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
+			//homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
+			//Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
 
-			outputMat.copyTo(frame.rowRange(0, 100).colRange(100, 200));
+			//outputMat.copyTo(frame.rowRange(0, 100).colRange(100, 200));
 		}
 		if(!cam.isOpened()){
 			System.out.println("Error");
@@ -379,17 +384,6 @@ public class Exercise3 implements ApplicationListener {
 				oriP=p;
 			}
 		}
-		/*List<Point> temp = m1.toList();
-		final Point calibP=bestP;
-		Collections.sort(temp, new Comparator<Point>() {
-			public int compare(Point o1, Point o2) {
-				double calibx = calibP.x;
-				double caliby = calibP.y;
-				if (Math.sqrt(Math.pow((o1.x-calibx),2)+Math.pow((o1.y-caliby),2)) <
-						Math.sqrt(Math.pow((o2.x-calibx),2)+Math.pow((o2.y-caliby),2))) return -1;
-				else  return 1;
-			}
-		});*/
 		//place corners correctly
 		int originalIdx=0;
 		List<Point> sorted = new ArrayList();
@@ -406,6 +400,26 @@ public class Exercise3 implements ApplicationListener {
 		MatOfPoint res=new MatOfPoint();
 		res.fromList(sorted);
 		return res;
+	}
+
+	private float angleBetween(Point a, Point b)
+	{
+		double len1 = Math.sqrt(Math.pow(a.x,2)+Math.pow(a.y,2));
+		double len2 = Math.sqrt(Math.pow(b.x,2)+Math.pow(b.y,2));
+
+		double dot = a.dot(b);
+
+		double val = dot/(len1*len2);
+
+		if(val>=1.0)
+		{
+			return 0.0f;
+		}
+		else if (val<=-1.0)
+		{
+			return (float) Math.PI;
+		}
+		else return (float) Math.acos(val);
 	}
 
 
