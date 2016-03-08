@@ -44,11 +44,12 @@ public class Exercise3 implements ApplicationListener {
 	private Model model;
 	private ModelBatch batch;
 	private Environment environment;
-	private ModelInstance testInstance;
-	private ModelInstance testInstance2;
+	private ModelInstance maid1;
+	private ModelInstance maid2;
 	private boolean loading;
-	private AnimationController controller;
-	
+	private AnimationController controller1;
+	private AnimationController controller2;
+
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
 
@@ -64,7 +65,8 @@ public class Exercise3 implements ApplicationListener {
     String model1path = "maid_model/maid1.g3db";
 	String model2path = "maid_model/maid2.g3db";
 
-    @Override
+
+	@Override
 	public void create() {
 		cam = new VideoCapture(0);
 		frame = new Mat();
@@ -129,26 +131,30 @@ public class Exercise3 implements ApplicationListener {
 		for (Material m: obj.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
-		testInstance = new ModelInstance(obj);
-        testInstance.transform.setToScaling(5f, 5f, 5f);
-		controller = new AnimationController(testInstance);
-		controller.setAnimation(obj.animations.get(0).id,-1);
-		instances.add(testInstance);
+		maid1 = new ModelInstance(obj);
+        //maid1.transform.setToScaling(5f, 5f, 5f);
+		controller1 = new AnimationController(maid1);
+		controller1.setAnimation(obj.animations.get(0).id,-1); //0 lookaround; 1 nothing; 2 waving
+		instances.add(maid1);
 
 		//model 2
 		obj = assets.get(model2path,Model.class);
 		for (Material m: obj.materials) {
 			m.set(new BlendingAttribute(false,1));
 		}
-		testInstance2 = new ModelInstance(obj);
-
-		instances.add(testInstance2);
+		System.out.println(obj.animations.get(0).id);
+		maid2 = new ModelInstance(obj);
+		controller2 = new AnimationController(maid2);
+		controller2.setAnimation(obj.animations.get(0).id,-1);
+		instances.add(maid2);
 		loading = false;
     }
     
 	@Override
 	public void resize(int width, int height) {
-		// TODO Auto-generated method stub
+		pcam.viewportWidth = width;
+		pcam.viewportHeight = height;
+		pcam.update();
 	}
 
 	@Override
@@ -173,8 +179,6 @@ public class Exercise3 implements ApplicationListener {
 
 		MatOfPoint marker1 = null;
 		MatOfPoint marker2 = null;
-
-		Rect makerOutbound = new Rect(0,0,0,0);
 
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
 		for(int i=0; i<contours.size(); i++)
@@ -238,12 +242,14 @@ public class Exercise3 implements ApplicationListener {
 			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
 
 			//Transform our object to the marker
-			Matrix4 transformMatrix = testInstance.transform.cpy();
+			Matrix4 transformMatrix = maid1.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
-			testInstance.transform.set(transformMatrix);
-			testInstance.transform.scale(0.5f, 0.5f, 0.5f);
-			testInstance.transform.rotate(1,0,0,90);
-			controller.update(Gdx.graphics.getDeltaTime());
+			maid1.transform.set(transformMatrix);
+			maid1.transform.scale(0.5f, 0.5f, 0.5f);
+			maid1.transform.rotate(1,0,0,90);
+
+			//maid1.transform.setToLookAt();
+			controller1.update(Gdx.graphics.getDeltaTime());
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -263,11 +269,12 @@ public class Exercise3 implements ApplicationListener {
 			Calib3d.solvePnP(wc, markerCorners, UtilAR.getDefaultIntrinsics(camWidth, camHeight), UtilAR.getDefaultDistortionCoefficients(), rvec, tvec);
 
 			//Transform our object to the marker
-			Matrix4 transformMatrix = testInstance2.transform.cpy();
+			Matrix4 transformMatrix = maid2.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
-			testInstance2.transform.set(transformMatrix);
-			testInstance2.transform.scale(0.5f, 0.5f, 0.5f);
-			testInstance2.transform.rotate(1,0,0,90);
+			maid2.transform.set(transformMatrix);
+			maid2.transform.scale(0.5f, 0.5f, 0.5f);
+			maid2.transform.rotate(1,0,0,90);
+			controller2.update(Gdx.graphics.getDeltaTime());
 
 			homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
@@ -318,15 +325,15 @@ public class Exercise3 implements ApplicationListener {
         
 //        model = loader.loadModel(Gdx.files.internal("spyro.obj"));
 //        System.out.println(model);
-//        testInstance = new ModelInstance(model);
-//        instances.add(testInstance);
+//        maid1 = new ModelInstance(model);
+//        instances.add(maid1);
         
         
         model = builder.createArrow(zeroVect, zAxis,
         		new Material(ColorAttribute.createDiffuse(Color.RED)), 
         		Usage.Position | Usage.Normal);
-        testInstance2 = new ModelInstance(model);
-        instances.add(testInstance2);
+        maid2 = new ModelInstance(model);
+        instances.add(maid2);
         
 	}
 	
