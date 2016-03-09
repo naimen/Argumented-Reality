@@ -332,8 +332,10 @@ public class Exercise3 implements ApplicationListener {
 				maid2.transform.getTranslation(maid2pos);
 				
 				Vector3 direction = maid2pos.sub(maid1pos).nor();
-				Quaternion q = new Quaternion().setFromCross(new Vector3(-1f,0.1f,0f),direction);
-				maid1.transform.rotate(q).rotate(0f,0f,1f,-90f);
+				Quaternion q = new Quaternion().setFromCross(new Vector3(0f,
+																		-(float) Math.acos((double) direction.x),
+																		(float) Math.tanh((double) direction.z)), direction);
+				maid1.transform.rotate(q);
 			}
 
 
@@ -370,9 +372,11 @@ public class Exercise3 implements ApplicationListener {
 				maid2.transform.getTranslation(maid2pos);
 
 				Vector3 direction = maid1pos.sub(maid2pos).nor();
-				Quaternion q = new Quaternion().setFromCross(new Vector3(1f,0.1f,0f),direction);
-				//maid2.transform.rotate(0,1,0,-90);
-				maid2.transform.rotate(q);
+				Quaternion q = new Quaternion().setFromCross(new Vector3(0f,
+																			(float) Math.acos((double) direction.x),
+																			-(float) Math.tanh((double) direction.z)),direction);
+				//maid2.transform.rotate(0,0,1,-90);
+				//maid2.transform.rotate(q);
 			}
 
 			controller2.update(Gdx.graphics.getDeltaTime());
