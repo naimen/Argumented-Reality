@@ -53,8 +53,6 @@ public class Exercise3 implements ApplicationListener {
 
 	//Translation-rotation stuff
 	private MatOfPoint3f wc;
-	private Point center1;
-	private Point center2;
 
 
     //Homography stuff
@@ -158,8 +156,6 @@ public class Exercise3 implements ApplicationListener {
 			}
 		});
 		instances.add(maid1);
-		
-		System.out.println(maid1.transform.getTranslation(new Vector3()));
 
 		//model 2
 		final Model obj2 = assets.get(model2path,Model.class);
@@ -288,30 +284,19 @@ public class Exercise3 implements ApplicationListener {
 			maid1.transform.set(transformMatrix);
 			maid1.transform.scale(0.5f, 0.5f, 0.5f);
 			maid1.transform.rotate(1,0,0,90);
-			
-			if (marker2 != null) {
-				/*Point center1 = new Point((marker1.get(0, 0)[0]+marker1.get(3, 0)[0])/2,(marker1.get(0, 0)[1]+marker1.get(3, 0)[1])/2);
-				Point center2 = new Point((marker2.get(0, 0)[0]+marker2.get(3, 0)[0])/2,(marker2.get(0, 0)[1]+marker1.get(3, 0)[1])/2);
-				//Mat homeg1 = new MatOfPoint3f(new Point3(center1.x,center1.y,1));
-				//MatOfPoint3f homeg2 = new MatOfPoint3f(new Point3(center2.x,center2.y,1));
-				//homeg1 = intrinsics.inv().mul(homeg1);
-				Vector3 m1c=new Vector3((float) center1.x,(float) center1.y,1);
-				Vector3 m2c=new Vector3((float) center2.x,(float) center2.y,1);
-				maid1.transform.rotate(m1c,m2c);*/
 
-			}
-			
 			if (m2ready) {
-				
 				Vector3 maid1pos = new Vector3();
 				Vector3 maid2pos = new Vector3();
+				System.out.println(maid1.transform.getTranslation(maid1pos));
 				maid1.transform.getTranslation(maid1pos);
 				maid2.transform.getTranslation(maid2pos);
 				
 				Vector3 direction = new Vector3();
-				direction = maid2pos.sub(maid1pos).nor();
-				
-				maid1.transform.rotate(direction.scl(-1), Vector3.Z);
+				direction.set(maid2pos).sub(maid1pos).nor();
+				Quaternion q = new Quaternion();
+				q.setFromCross(new Vector3(0,0,1),direction);
+				maid1.transform.rotate(q);
 			}
 
 
