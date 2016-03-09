@@ -64,6 +64,7 @@ public class Exercise3 implements ApplicationListener {
     private Mat outputMat;
     private ArrayList<MatOfPoint> markerBorderList;
     private ArrayList<MatOfPoint> sixBorderList;
+    private ArrayList<MatOfPoint> tenBorderList;
     
     String model1path = "maid_model/maid1.g3db";
 	String model2path = "maid_model/maid2.g3db";
@@ -82,6 +83,7 @@ public class Exercise3 implements ApplicationListener {
 		contours = new ArrayList<MatOfPoint>();
 		markerBorderList = new ArrayList<MatOfPoint>();
 		sixBorderList = new ArrayList<MatOfPoint>();
+		tenBorderList = new ArrayList<MatOfPoint>();
 		intrinsics = UtilAR.getDefaultIntrinsics(camWidth, camHeight);
 		distCoeffs = UtilAR.getDefaultDistortionCoefficients();
 
@@ -214,6 +216,7 @@ public class Exercise3 implements ApplicationListener {
 
 		MatOfPoint marker1 = null;
 		MatOfPoint marker2 = null;
+		MatOfPoint marker3 = null;
 
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
 		for(int i=0; i<contours.size(); i++)
@@ -236,9 +239,14 @@ public class Exercise3 implements ApplicationListener {
 					 Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				sixBorderList.add(approxPoly2);
 			}
+			
+			if(approxPoly2.total()==10 &&
+					Math.abs(Imgproc.contourArea(coutourMat))>1000) {
+				tenBorderList.add(approxPoly2);
+			}
 		}
 
-
+		
 		//Check if a point in our 6-point polygon is inside one of our markers, if so, we found our marker
 		Double inside;
 		for(MatOfPoint m1 : markerBorderList) {
@@ -260,6 +268,18 @@ public class Exercise3 implements ApplicationListener {
 				}
 			}
 		}
+		
+//		for(MatOfPoint m1 : markerBorderList) {
+//			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
+//			for(MatOfPoint m2 : tenBorderList) {
+//				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
+//				if(inside > 0) {
+//					marker3 = sortCornerPoints(m1,m2);
+//				}
+//			}
+//		}
+
+		
 
 		markerBorderList.clear();
 		sixBorderList.clear();
@@ -269,10 +289,7 @@ public class Exercise3 implements ApplicationListener {
 			Mat rvec = new Mat();
 			Mat tvec = new Mat();
 
-			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(1, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker1.get(1, 0)), new Point(marker1.get(2, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker1.get(2, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
+			drawMarkerBorder(marker1);
 
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker1.toArray());
 
@@ -311,7 +328,10 @@ public class Exercise3 implements ApplicationListener {
 				Vector3 direction = new Vector3();
 				direction = maid2pos.sub(maid1pos).nor();
 				
+
 				maid1.transform.rotate(direction.scl(-1), Vector3.Z);
+				
+				//maid1.transform.setToRotation(direction, Vector3.Z);
 			}
 
 
@@ -330,10 +350,7 @@ public class Exercise3 implements ApplicationListener {
 			Mat tvec = new Mat();
 			m2ready = true;
 
-			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(1, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker2.get(1, 0)), new Point(marker2.get(2, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker2.get(0, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
-			Imgproc.line(frame, new Point(marker2.get(2, 0)), new Point(marker2.get(3, 0)), new Scalar(0, 255, 0), 2);
+			drawMarkerBorder(marker2);
 
 			MatOfPoint2f markerCorners = new MatOfPoint2f(marker2.toArray());
 			Calib3d.solvePnP(wc, markerCorners, intrinsics, distCoeffs, rvec, tvec);
@@ -352,6 +369,11 @@ public class Exercise3 implements ApplicationListener {
 			//outputMat.copyTo(frame.rowRange(0, 100).colRange(100, 200));
 		}
 		else m2ready = false;
+		
+		if (marker3 != null) {
+			drawMarkerBorder(marker3);
+		}
+		
 		if(!cam.isOpened()){
 			System.out.println("Error");
 		}else if (frameRead){
@@ -365,6 +387,28 @@ public class Exercise3 implements ApplicationListener {
 		batch.end();
 	}
 
+	private void drawMarkerBorder(MatOfPoint marker1) {
+		Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(1, 0)), new Scalar(0, 255, 0), 2);
+		Imgproc.line(frame, new Point(marker1.get(1, 0)), new Point(marker1.get(2, 0)), new Scalar(0, 255, 0), 2);
+		Imgproc.line(frame, new Point(marker1.get(0, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
+		Imgproc.line(frame, new Point(marker1.get(2, 0)), new Point(marker1.get(3, 0)), new Scalar(0, 255, 0), 2);
+	}
+	
+	private boolean isInside(MatOfPoint inside, MatOfPoint border) {
+		MatOfPoint2f inside2f = new MatOfPoint2f(inside.toArray());
+		double isInside = Imgproc.pointPolygonTest(inside2f, new Point(border.get(0, 0)), false);
+		return (isInside > 0);
+	}
+	
+	private boolean noBoxInside(MatOfPoint m) {
+		for(MatOfPoint m1 : markerBorderList) {
+			MatOfPoint2f inside = new MatOfPoint2f(m1.toArray());
+			double isInside = Imgproc.pointPolygonTest(inside, new Point(m.get(0, 0)), false);
+			if (isInside > 0) {return false;}
+		}
+		return true;
+	}
+	
 	private void drawCoordinateSystem() {
 		//Coordinate System
         Vector3 zeroVect = new Vector3(0f, 0f, 0f);
