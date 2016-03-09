@@ -291,7 +291,7 @@ public class Exercise3 implements ApplicationListener {
 			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
 			for(MatOfPoint m2 : tenBorderList) {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
-				if(inside > 0 && !m1.equals(marker2inner) && !m1.equals(rawMarker1)) {
+				if(inside > 0 && marker1 == null && marker2 == null) {
 					marker3 = sortCornerPoints(m1,m2);
 				}
 			}
