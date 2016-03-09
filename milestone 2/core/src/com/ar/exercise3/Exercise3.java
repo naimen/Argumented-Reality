@@ -327,13 +327,13 @@ public class Exercise3 implements ApplicationListener {
 			if (m2ready) {
 				Vector3 maid1pos = new Vector3();
 				Vector3 maid2pos = new Vector3();
-				System.out.println(maid1.transform.getTranslation(maid1pos));
+				//System.out.println(maid1.transform.getTranslation(maid1pos));
 				maid1.transform.getTranslation(maid1pos);
 				maid2.transform.getTranslation(maid2pos);
 				
 				Vector3 direction = maid2pos.sub(maid1pos).nor();
-				Quaternion q = new Quaternion().setFromCross(Vector3.X,direction);
-				maid1.transform.set(transformMatrix).scale(0.5f,0.5f,0.5f).rotate(q).rotate(0,0,1,90);
+				Quaternion q = new Quaternion().setFromCross(new Vector3(-1f,0.1f,0f),direction);
+				maid1.transform.rotate(q).rotate(0f,0f,1f,-90f);
 			}
 
 
@@ -362,7 +362,19 @@ public class Exercise3 implements ApplicationListener {
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			maid2.transform.set(transformMatrix);
 			maid2.transform.scale(0.5f, 0.5f, 0.5f);
-			//maid2.transform.rotate(1,0,0,90);
+			if (m1ready) {
+				Vector3 maid1pos = new Vector3();
+				Vector3 maid2pos = new Vector3();
+				//System.out.println(maid1.transform.getTranslation(maid1pos));
+				maid1.transform.getTranslation(maid1pos);
+				maid2.transform.getTranslation(maid2pos);
+
+				Vector3 direction = maid1pos.sub(maid2pos).nor();
+				Quaternion q = new Quaternion().setFromCross(new Vector3(1f,0.1f,0f),direction);
+				//maid2.transform.rotate(0,1,0,-90);
+				maid2.transform.rotate(q);
+			}
+
 			controller2.update(Gdx.graphics.getDeltaTime());
 			
 			//homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
