@@ -173,12 +173,12 @@ public class Exercise3 implements ApplicationListener {
 		controller2.setAnimation(obj2.animations.get(0).id, 1, new AnimationController.AnimationListener() {
 			@Override
 			public void onEnd(AnimationController.AnimationDesc animation) {
-
+				if(m1ready) controller2.queue(obj2.animations.get(0).id,1,1,this,1f); //doesn't seems to have an effect
 			}
 
 			@Override
 			public void onLoop(AnimationController.AnimationDesc animation) {
-				if(m1ready) controller2.animate(obj2.animations.get(0).id,1,this,1f); //doesn't seems to have an effect
+
 			}
 		});
 		instances.add(maid2);
@@ -314,15 +314,15 @@ public class Exercise3 implements ApplicationListener {
 
 			Calib3d.solvePnP(wc, markerCorners, intrinsics, distCoeffs, rvec, tvec);
 
-			
-			
+
+
 			
 			//Transform our object to the marker
 			Matrix4 transformMatrix = maid1.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			maid1.transform.set(transformMatrix);
 			maid1.transform.scale(0.5f, 0.5f, 0.5f);
-			maid1.transform.rotate(1,0,0,90);
+			//maid1.transform.rotate(1,0,0,90);
 
 			if (m2ready) {
 				Vector3 maid1pos = new Vector3();
@@ -331,13 +331,9 @@ public class Exercise3 implements ApplicationListener {
 				maid1.transform.getTranslation(maid1pos);
 				maid2.transform.getTranslation(maid2pos);
 				
-				Vector3 direction = new Vector3();
-				direction.set(maid2pos).sub(maid1pos).nor();
-				Quaternion q = new Quaternion();
-				q.setFromCross(Vector3.Z,direction);
-				
-				//maid1.transform.set(q).setTranslation(maid1pos);
-				maid1.transform.rotate(q);
+				Vector3 direction = maid2pos.sub(maid1pos).nor();
+				Quaternion q = new Quaternion().setFromCross(Vector3.X,direction);
+				maid1.transform.set(transformMatrix).scale(0.5f,0.5f,0.5f).rotate(q).rotate(0,0,1,90);
 			}
 
 
@@ -366,7 +362,7 @@ public class Exercise3 implements ApplicationListener {
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			maid2.transform.set(transformMatrix);
 			maid2.transform.scale(0.5f, 0.5f, 0.5f);
-			maid2.transform.rotate(1,0,0,90);
+			//maid2.transform.rotate(1,0,0,90);
 			controller2.update(Gdx.graphics.getDeltaTime());
 			
 			//homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
