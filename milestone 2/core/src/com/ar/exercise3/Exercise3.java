@@ -47,6 +47,7 @@ public class Exercise3 implements ApplicationListener {
 	private Environment environment;
 	private ModelInstance maid1;
 	private ModelInstance maid2;
+	private ModelInstance spyro;
 	private boolean loading;
 	private AnimationController controller1;
 	private AnimationController controller2;
@@ -66,6 +67,7 @@ public class Exercise3 implements ApplicationListener {
     
     String model1path = "maid_model/maid1.g3db";
 	String model2path = "maid_model/maid2.g3db";
+	String model3path = "Spyro the Dragon by Morganicism.obj";
 	private Mat intrinsics;
 	private MatOfDouble distCoeffs;
 	private boolean m1ready;
@@ -107,6 +109,7 @@ public class Exercise3 implements ApplicationListener {
     	assets = new AssetManager();
     	assets.load(model1path, Model.class);
 		assets.load(model2path, Model.class);
+		assets.load(model3path, Model.class);
     	loading = true;
     	
     	cam.read(frame);
@@ -179,6 +182,13 @@ public class Exercise3 implements ApplicationListener {
 			}
 		});
 		instances.add(maid2);
+		
+		
+		//bear
+		final Model obj3 = assets.get(model3path, Model.class);
+		spyro = new ModelInstance(obj3);
+		instances.add(spyro);
+		
 		loading = false;
     }
     
@@ -197,6 +207,13 @@ public class Exercise3 implements ApplicationListener {
             doneLoading();
 
 		pcam.update();
+		
+		if(!loading) {
+			maid1.transform.scale(0f, 0f, 0f);
+			maid2.transform.scale(0f, 0f, 0f);
+			spyro.transform.scale(0f, 0f, 0f);
+		}
+		
 		Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT | GL20.GL_FRAMEBUFFER);
 
@@ -210,8 +227,11 @@ public class Exercise3 implements ApplicationListener {
 		contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(binaryFrame.clone(), contours, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
+		MatOfPoint rawMarker1 = null;
 		MatOfPoint marker1 = null;
+		MatOfPoint marker1inner = null;
 		MatOfPoint marker2 = null;
+		MatOfPoint marker2inner = null;
 		MatOfPoint marker3 = null;
 
 		MatOfPoint2f approxPoly = new MatOfPoint2f();
@@ -231,12 +251,12 @@ public class Exercise3 implements ApplicationListener {
 				markerBorderList.add(approxPoly2);
 			}
 			//Fill list of polygons with 6 borders (Most likely our marker)
-			if(approxPoly2.total()==6 &&
+			else if(approxPoly2.total()==6 &&
 					 Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				sixBorderList.add(approxPoly2);
 			}
 			
-			if(approxPoly2.total()==10 &&
+			else if(approxPoly2.total()==10 &&
 					Math.abs(Imgproc.contourArea(coutourMat))>1000) {
 				tenBorderList.add(approxPoly2);
 			}
@@ -251,6 +271,7 @@ public class Exercise3 implements ApplicationListener {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
 					marker1 = sortCornerPoints(m1,m2);
+					rawMarker1 = m1;
 				}
 			}
 		}
@@ -261,19 +282,20 @@ public class Exercise3 implements ApplicationListener {
 				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
 				if(inside > 0) {
 					marker2 = m1;
+					marker2inner = m2;
 				}
 			}
 		}
 		
-//		for(MatOfPoint m1 : markerBorderList) {
-//			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
-//			for(MatOfPoint m2 : tenBorderList) {
-//				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
-//				if(inside > 0) {
-//					marker3 = sortCornerPoints(m1,m2);
-//				}
-//			}
-//		}
+		for(MatOfPoint m1 : markerBorderList) {
+			MatOfPoint2f m = new MatOfPoint2f(m1.toArray());
+			for(MatOfPoint m2 : tenBorderList) {
+				inside = Imgproc.pointPolygonTest(m, new Point(m2.get(0, 0)), false);
+				if(inside > 0 && !m1.equals(marker2inner) && !m1.equals(rawMarker1)) {
+					marker3 = sortCornerPoints(m1,m2);
+				}
+			}
+		}
 
 		
 
@@ -312,7 +334,9 @@ public class Exercise3 implements ApplicationListener {
 				Vector3 direction = new Vector3();
 				direction.set(maid2pos).sub(maid1pos).nor();
 				Quaternion q = new Quaternion();
-				q.setFromCross(new Vector3(0,0,1),direction);
+				q.setFromCross(Vector3.Z,direction);
+				
+				//maid1.transform.set(q).setTranslation(maid1pos);
 				maid1.transform.rotate(q);
 			}
 
@@ -344,7 +368,7 @@ public class Exercise3 implements ApplicationListener {
 			maid2.transform.scale(0.5f, 0.5f, 0.5f);
 			maid2.transform.rotate(1,0,0,90);
 			controller2.update(Gdx.graphics.getDeltaTime());
-
+			
 			//homographyPlane = Calib3d.findHomography(markerCorners, drawboard);
 			//Imgproc.warpPerspective(frame, outputMat, homographyPlane, new Size(100, 100));
 
@@ -352,8 +376,20 @@ public class Exercise3 implements ApplicationListener {
 		}
 		else m2ready = false;
 		
-		if (marker3 != null) {
+		if (marker3 != null && loading == false) {
+			Mat rvec = new Mat();
+			Mat tvec = new Mat();
+			
 			drawMarkerBorder(marker3);
+			
+			MatOfPoint2f markerCorners = new MatOfPoint2f(marker3.toArray());
+			Calib3d.solvePnP(wc, markerCorners, intrinsics, distCoeffs, rvec, tvec);
+			
+			Matrix4 transformMatrix = spyro.transform.cpy();
+			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
+			spyro.transform.set(transformMatrix);
+			spyro.transform.scale(3f, 3f, 3);
+			spyro.transform.rotate(1,0,0,90);
 		}
 		
 		if(!cam.isOpened()){
