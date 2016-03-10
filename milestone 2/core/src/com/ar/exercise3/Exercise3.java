@@ -67,7 +67,7 @@ public class Exercise3 implements ApplicationListener {
     
     String model1path = "maid_model/maid1.g3db";
 	String model2path = "maid_model/maid2.g3db";
-	String model3path = "Spyro the Dragon by Morganicism.obj";
+	String model3path = "Spyro.g3db";
 	private Mat intrinsics;
 	private MatOfDouble distCoeffs;
 	private boolean m1ready;
@@ -186,6 +186,9 @@ public class Exercise3 implements ApplicationListener {
 		
 		//bear
 		final Model obj3 = assets.get(model3path, Model.class);
+		for (Material m: obj3.materials) {
+			m.set(new BlendingAttribute(false,1));
+		}
 		spyro = new ModelInstance(obj3);
 		instances.add(spyro);
 		
@@ -332,8 +335,11 @@ public class Exercise3 implements ApplicationListener {
 				maid2.transform.getTranslation(maid2pos);
 				
 				Vector3 direction = maid2pos.sub(maid1pos).nor();
-				Quaternion q = new Quaternion().setFromCross(new Vector3(0f,
-																		-(float) Math.acos((double) direction.x),
+				Vector3 temp= new Vector3(0f,1f,0f);
+				//double d = temp.dot(direction)/(temp.len()*direction.len());
+
+				Quaternion q = new Quaternion().setFromCross(new Vector3((float) Math.asin((double) direction.y),
+																		-(float) Math.acos((double) direction.y),
 																		(float) Math.tanh((double) direction.z)), direction);
 				maid1.transform.rotate(q);
 			}
@@ -400,7 +406,7 @@ public class Exercise3 implements ApplicationListener {
 			Matrix4 transformMatrix = spyro.transform.cpy();
 			UtilAR.setTransformByRT(rvec, tvec, transformMatrix);
 			spyro.transform.set(transformMatrix);
-			spyro.transform.scale(3f, 3f, 3);
+			spyro.transform.scale(1f, 1f,1f);
 			spyro.transform.rotate(1,0,0,90);
 		}
 		
